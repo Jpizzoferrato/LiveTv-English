@@ -20,8 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml playwright python-dateutil python-dotenv
-          playwright install
+          pip install requests beautifulsoup4 lxml python-dateutil python-dotenv
 
       - name: Gather m3u
         run: |
@@ -33,33 +32,57 @@ jobs:
 
           urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-          print("Running 24/7 channel extractor...")
-          html_url = "https://daddylive.sx/24-7-channels.php"
-          headers = {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
-          }
+          def get_html(url):
+              headers = {
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
+              }
+              try:
+                  res = requests.get(url, headers=headers, timeout=15, verify=False)
+                  res.raise_for_status()
+                  return res.text
+              except Exception as e:
+                  print(f"Error loading {url}: {e}")
+                  return None
 
-          try:
-              res = requests.get(html_url, headers=headers, timeout=15, verify=False)
-              res.raise_for_status()
-              soup = BeautifulSoup(res.text, 'html.parser')
-              cards = soup.find_all('a', class_='card')
-              
+          def main():
               channels = []
-              for card in cards:
-                  title_div = card.find('div', class_='card__title')
-                  if not title_div: continue
-                  name = title_div.text.strip()
-                  href = card.get('href', '')
-                  if 'id=' not in href: continue
-                  ch_id = href.split('id=')[1].split('&')[0]
-                  
-                  if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
-                  if ch_id == "853": name = "Canale 5 Italy"
-                  
-                  stream_url = f"https://daddylive.sx/watch.php?id={ch_id}"
-                  channels.append((name, stream_url))
+              
+              # 1. Scraping 24/7 Channels
+              print("Scraping 24/7 channels from daddylive.org...")
+              html_247 = get_html("https://daddylive.org/24-7-channels.php")
+              if html_247:
+                  soup = BeautifulSoup(html_247, 'html.parser')
+                  cards = soup.find_all('a', class_='card')
+                  for card in cards:
+                      title_div = card.find('div', class_='card__title')
+                      if not title_div: continue
+                      name = title_div.text.strip()
+                      href = card.get('href', '')
+                      if 'id=' not in href: continue
+                      ch_id = href.split('id=')[1].split('&')[0]
+                      
+                      if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
+                      if ch_id == "853": name = "Canale 5 Italy"
+                      
+                      stream_url = f"https://daddylive.org/watch.php?id={ch_id}"
+                      channels.append((name, stream_url))
 
+              # 2. Scraping Live Schedule Events
+              print("Scraping live scheduled events from daddylive.org...")
+              html_schedule = get_html("https://daddylive.org/index.php")
+              if html_schedule:
+                  soup = BeautifulSoup(html_schedule, 'html.parser')
+                  event_links = soup.find_all('a', href=re.compile(r'stream-\d+\.php'))
+                  for link in event_links:
+                      name = link.text.strip()
+                      href = link.get('href', '')
+                      if not name or not href: continue
+                      if "Stream" in name:
+                          name = f"Live Event: {name}"
+                      stream_url = f"https://daddylive.org/{href}"
+                      channels.append((name, stream_url))
+
+              # 3. Duplicate Engine (Prevents USA Network backups from dropping)
               name_counts = {}
               for name, _ in channels:
                   name_counts[name] = name_counts.get(name, 0) + 1
@@ -80,53 +103,26 @@ jobs:
               with open("dlhd.m3u", "w", encoding="utf-8") as f:
                   f.write("#EXTM3U\n\n")
                   for name, url in final_channels:
-                      f.write(f'#EXTINF:-1 group-title="DLHD 24/7",{name}\n{url}\n\n')
+                      f.write(f'#EXTINF:-1 group-title="DLHD Combined",{name}\n{url}\n\n')
               print(f"Successfully created dlhd.m3u with {len(final_channels)} total channels!")
 
-          except Exception as e:
-              print(f"Error occurred: {e}")
-              with open("dlhd.m3u", "w", encoding="utf-8") as f:
-                  f.write("#EXTM3U\n")
+          if __name__ == "__main__":
+              main()
           EOF
           python run_scraper.py
-
-      - name: Convert JSON guide to EPG
-        run: |
-          python json_to_epg.py || echo "Skipping step"
-
-      - name: Update EPG with Known Channel IDs
-        run: |
-          python match_epg_with_known_channels.py || echo "Skipping step"
-
-      - name: Add Country Categories to DLHD
-        run: |
-          python add_country_categories_to_dlhd.py || echo "Skipping step"
-
-      - name: Add Logos to M3u and EPG
-        run: |
-          python add_logos_to_dlhd_m3u.py || echo "Skipping step"
-          python add_logos_to_epg.py || echo "Skipping step"
 
       - name: Configure Git
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      - name: Stash local changes (if present)
-        run: |
-          git diff --quiet || git stash
-
       - name: Download the latest changes from the remote repository
-        run: git pull --rebase origin main
-
-      - name: Restore stashed changes (if present)
-        run: |
-          git stash list | grep -q "stash@{0}" && git stash pop || echo "No changes to restore"
+        run: git pull --rebase origin main || echo "No remote changes to merge"
 
       - name: Add generated files to commit
         run: |
-          git add .
-          git commit -m "UPDATE" || echo "No changes to commit"
+          git add dlhd.m3u
+          git commit -m "UPDATE PLAYLIST" || echo "No changes to commit"
 
       - name: Push changes
         run: git push
