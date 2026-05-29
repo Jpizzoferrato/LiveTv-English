@@ -137,7 +137,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41851482+github-actions[bot]@users.noreply.github.com"
-          git add dlhd.m3u
+          git add -A
           git diff-index --quiet HEAD || git commit -m "Automated Playlist Update"
           git push origin main
         env:
