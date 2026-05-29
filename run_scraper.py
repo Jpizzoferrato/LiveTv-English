@@ -39,11 +39,11 @@ def main():
             
             raw_channels.append((name, ch_id))
 
-    # Convert structural web targets to video stream proxies
+    # Convert structural web targets to video stream proxies with multiple player options
     for name, ch_id in raw_channels:
-        # Use a clean direct link parser fallback that video player engines can resolve
-        stream_url = f"https://daddylive.sx/embed/stream-{ch_id}.php"
-        final_channels.append((name, stream_url))
+        for play_num in range(1, 7):
+            stream_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
+            final_channels.append((f"{name} (P{play_num})", stream_url))
 
     print("Writing formatted IPTV lines...")
     with open("dlhd.m3u", "w", encoding="utf-8") as f:
@@ -77,9 +77,9 @@ def main():
             else:
                 group = "DLHD United States & General"
                 
-            # Add standard user-agent attributes right into the stream string so player app bypasses blocks
+            # Standard user-agent and correctly spelled referrer attributes tailored for Sparkle TV syntax
             f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}",{clean_name}\n')
-            f.write(f'{url}|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)&\n\n')
+            f.write(f'{url}|user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36|referrer=https://daddylive.sx/\n\n')
             valid_idx += 1
 
 if __name__ == "__main__":
