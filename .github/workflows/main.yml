@@ -4,10 +4,10 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:  # Allows manual execution
 
-# Grant the token explicit permissions to update files and workflows
+# Corrected security block for GitHub Actions permissions
 permissions:
   contents: write
-  workflows: write
+  id-token: write
 
 jobs:
   extract-data:
@@ -52,11 +52,6 @@ jobs:
 
           def main():
               raw_channels = []
-              session = requests.Session()
-              session.verify = False
-              session.headers.update({
-                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
-              })
               
               print("Scraping 24/7 channels...")
               html_247 = get_html("https://daddylive.sx/24-7-channels.php")
@@ -78,14 +73,12 @@ jobs:
               final_channels = []
               
               print("Verifying and expanding backup links globally...")
-              # Process each channel. Only unwrap all 6 if it's your target network to keep sizes perfect
               for name, ch_id in raw_channels:
                   if "usa network" in name.lower():
                       for play_num in range(1, 7):
                           player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
                           final_channels.append((f"USA Network ({play_num})", player_url))
                   else:
-                      # Add standard link for other items globally
                       standard_url = f"https://daddylive.sx/watch.php?id={ch_id}"
                       final_channels.append((name, standard_url))
 
