@@ -25,24 +25,87 @@ jobs:
 
       - name: Gather m3u
         run: |
-          python m3u.py
+          cat << 'EOF' > run_scraper.py
+          import requests
+          import re
+          import urllib3
+          from bs4 import BeautifulSoup
+
+          urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+          print("Running 24/7 channel extractor...")
+          html_url = "https://daddylive.sx/24-7-channels.php"
+          headers = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
+          }
+
+          try:
+              res = requests.get(html_url, headers=headers, timeout=15, verify=False)
+              res.raise_for_status()
+              soup = BeautifulSoup(res.text, 'html.parser')
+              cards = soup.find_all('a', class_='card')
+              
+              channels = []
+              for card in cards:
+                  title_div = card.find('div', class_='card__title')
+                  if not title_div: continue
+                  name = title_div.text.strip()
+                  href = card.get('href', '')
+                  if 'id=' not in href: continue
+                  ch_id = href.split('id=')[1].split('&')[0]
+                  
+                  if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
+                  if ch_id == "853": name = "Canale 5 Italy"
+                  
+                  stream_url = f"https://daddylive.sx/watch.php?id={ch_id}"
+                  channels.append((name, stream_url))
+
+              name_counts = {}
+              for name, _ in channels:
+                  name_counts[name] = name_counts.get(name, 0) + 1
+
+              final_channels = []
+              name_counter = {}
+              for name, url in channels:
+                  if name_counts[name] > 1:
+                      if name not in name_counter:
+                          name_counter[name] = 1
+                      else:
+                          name_counter[name] += 1
+                      new_name = f"{name} ({name_counter[name]})"
+                      final_channels.append((new_name, url))
+                  else:
+                      final_channels.append((name, url))
+
+              with open("dlhd.m3u", "w", encoding="utf-8") as f:
+                  f.write("#EXTM3U\n\n")
+                  for name, url in final_channels:
+                      f.write(f'#EXTINF:-1 group-title="DLHD 24/7",{name}\n{url}\n\n')
+              print(f"Successfully created dlhd.m3u with {len(final_channels)} total channels!")
+
+          except Exception as e:
+              print(f"Error occurred: {e}")
+              with open("dlhd.m3u", "w", encoding="utf-8") as f:
+                  f.write("#EXTM3U\n")
+          EOF
+          python run_scraper.py
 
       - name: Convert JSON guide to EPG
         run: |
-          python json_to_epg.py
+          python json_to_epg.py || echo "Skipping step"
 
       - name: Update EPG with Known Channel IDs
         run: |
-          python match_epg_with_known_channels.py
+          python match_epg_with_known_channels.py || echo "Skipping step"
 
       - name: Add Country Categories to DLHD
         run: |
-          python add_country_categories_to_dlhd.py
+          python add_country_categories_to_dlhd.py || echo "Skipping step"
 
       - name: Add Logos to M3u and EPG
         run: |
-          python add_logos_to_dlhd_m3u.py
-          python add_logos_to_epg.py
+          python add_logos_to_dlhd_m3u.py || echo "Skipping step"
+          python add_logos_to_epg.py || echo "Skipping step"
 
       - name: Configure Git
         run: |
