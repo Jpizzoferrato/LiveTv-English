@@ -2788,7 +2788,7 @@ ID: 695
 https://daddylive.sx/watch.php?id=695
 
 #EXTINF:-1 group-title="DLHD Combined",SEE Denmark
-ID: 811 (1)
+ID: 811
 https://daddylive.sx/watch.php?id=811
 
 #EXTINF:-1 group-title="DLHD Combined",Sky Cinema Collection Italy
@@ -3024,7 +3024,7 @@ ID: 883
 https://daddylive.sx/watch.php?id=883
 
 #EXTINF:-1 group-title="DLHD Combined",SEE Denmark
-ID: 811 (2)
+ID: 811
 https://daddylive.sx/watch.php?id=811
 
 #EXTINF:-1 group-title="DLHD Combined",Star Sports 1 IN
@@ -3355,9 +3355,23 @@ https://daddylive.sx/watch.php?id=711
 ID: 889
 https://daddylive.sx/watch.php?id=889
 
-#EXTINF:-1 group-title="DLHD Combined",USA Network
-ID: 343
-https://daddylive.sx/watch.php?id=343
+#EXTINF:-1 group-title="DLHD Combined",USA Network (1)
+https://daddylive.sx/embed/stream-343.php?p=1
+
+#EXTINF:-1 group-title="DLHD Combined",USA Network (2)
+https://daddylive.sx/embed/stream-343.php?p=2
+
+#EXTINF:-1 group-title="DLHD Combined",USA Network (3)
+https://daddylive.sx/embed/stream-343.php?p=3
+
+#EXTINF:-1 group-title="DLHD Combined",USA Network (4)
+https://daddylive.sx/embed/stream-343.php?p=4
+
+#EXTINF:-1 group-title="DLHD Combined",USA Network (5)
+https://daddylive.sx/embed/stream-343.php?p=5
+
+#EXTINF:-1 group-title="DLHD Combined",USA Network (6)
+https://daddylive.sx/embed/stream-343.php?p=6
 
 #EXTINF:-1 group-title="DLHD Combined",Universal Kids USA
 ID: 668
