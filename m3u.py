@@ -1,51 +1,27 @@
-import os
 import requests
+import os
 import re
 import json
 import sys
 import time
 import urllib.parse
 import urllib3
-import concurrent.futures
 from datetime import datetime, timedelta
-from base64 import b64decode, b64encode
-from binascii import a2b_hex
 
-# ==========================================
-# AUTO-PATCH PHANTOM DLHD.PY FILE FIRST
-# ==========================================
-if os.path.exists("dlhd.py"):
-    print("Fixing the dead links in dlhd.py...")
-    try:
-        with open("dlhd.py", "r", encoding="utf-8") as f:
-            dlhd_code = f.read()
-        fixed_dlhd = dlhd_code.replace("dlhd.dad", "daddylive.sx")
-        with open("dlhd.py", "w", encoding="utf-8") as f:
-            f.write(fixed_dlhd)
-        print("dlhd.py successfully patched to use .sx!")
-    except Exception as patch_err:
-        print(f"Warning: Could not patch dlhd.py on the fly: {patch_err}")
-
-# ==========================================
-# YOUR FULL DUPLICATE FIX CODE BELOW
-# ==========================================
 try:
     from bs4 import BeautifulSoup
     from dateutil import parser
-    from playwright.sync_api import sync_playwright
 except ImportError:
-    print("ERROR: Missing required libraries. Please run: pip install requests beautifulsoup4 python-dateutil playwright", file=sys.stderr)
+    print("ERROR: Missing required libraries. Please run: pip install requests beautifulsoup4 python-dateutil", file=sys.stderr)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def headers_to_extvlcopt(headers):
-    return []
-
 def search_m3u8_in_sites(channel_id, is_tennis=False, session=None):
-    return f"https://daddylive.sx/watch.php?id={channel_id}"
+    # Generates stream watch links using the .org domain
+    return f"https://daddylive.org/watch.php?id={channel_id}"
 
-def dlhd():
-    print("Running dlhd...")
+def main():
+    print("Running dlhd targeting daddylive.org...")
     JSON_FILE = "daddyliveSchedule.json"
     OUTPUT_FILE = "dlhd.m3u"
     HEADERS = {
@@ -53,7 +29,7 @@ def dlhd():
     }
 
     print("Extracting 24/7 channels from HTML page...")
-    html_url = "https://daddylive.sx/24-7-channels.php"
+    html_url = "https://daddylive.org/24-7-channels.php"
     session = requests.Session()
 
     try:
@@ -81,6 +57,7 @@ def dlhd():
             if stream_url:
                 channels_247.append((name, stream_url))
 
+        # Duplicate handling engine so all those USA Network variations get saved
         name_counts = {}
         for name, _ in channels_247:
             name_counts[name] = name_counts.get(name, 0) + 1
@@ -98,7 +75,7 @@ def dlhd():
             else:
                 final_channels.append((name, stream_url))
 
-        print(f"Found {len(channels_247)} 24/7 channels")
+        print(f"Found {len(final_channels)} 24/7 channels after processing.")
         channels_247 = final_channels
     except Exception as e:
         print(f"Error extracting 24/7 channels: {e}")
@@ -112,30 +89,7 @@ def dlhd():
                 f.write(f'#EXTINF:-1 group-title="DLHD 24/7",{name}\n')
                 f.write(f'{url}\n\n')
 
-    total_channels = len(channels_247)
-    print(f"Created file {OUTPUT_FILE} with {total_channels} total channels.")
-
-def schedule_extractor():
-    print("Skipping schedule_extractor to bypass anti-bot locks...")
-    return
-
-def vavoo_channels():
-    print("Running vavoo_channels...")
-    return
-
-def sportsonline():
-    print("Running sportsonline...")
-    return
-
-def main():
-    try:
-        schedule_extractor()
-        vavoo_channels()
-        dlhd()
-        sportsonline()
-        print("All scripts executed successfully!")
-    except Exception as e:
-        print(f"Error during execution: {e}")
+    print(f"Created file {OUTPUT_FILE} with {len(channels_247)} 24/7 channels.")
 
 if __name__ == "__main__":
     main()
