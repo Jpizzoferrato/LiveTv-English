@@ -4,7 +4,6 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:  # Allows manual execution
 
-# Corrected security block for GitHub Actions permissions
 permissions:
   contents: write
   id-token: write
@@ -72,15 +71,18 @@ jobs:
 
               final_channels = []
               
-              print("Verifying and expanding backup links globally...")
+              print("Expanding multi-player links globally for ALL channels...")
+              # This loops through every channel found and generates all 6 available player links
               for name, ch_id in raw_channels:
-                  if "usa network" in name.lower():
-                      for play_num in range(1, 7):
-                          player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
-                          final_channels.append((f"USA Network ({play_num})", player_url))
-                  else:
-                      standard_url = f"https://daddylive.sx/watch.php?id={ch_id}"
-                      final_channels.append((name, standard_url))
+                  for play_num in range(1, 7):
+                      player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
+                      
+                      if play_num == 1:
+                          # Main stream name stays clean
+                          final_channels.append((name, player_url))
+                      else:
+                          # Backups get labeled cleanly so your player doesn't mix them up
+                          final_channels.append((f"{name} (Backup {play_num})", player_url))
 
               print("Scraping scheduled events...")
               html_schedule = get_html("https://daddylive.sx/index.php")
