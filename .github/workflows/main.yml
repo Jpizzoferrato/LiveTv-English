@@ -47,6 +47,7 @@ jobs:
 
           def main():
               raw_channels = []
+              final_channels = []
               
               print("Scraping 24/7 channels...")
               html_247 = get_html("https://daddylive.sx/24-7-channels.php")
@@ -66,13 +67,11 @@ jobs:
                       
                       raw_channels.append((name, ch_id))
 
-              final_channels = []
-              
               print("Unwrapping hidden players 1-6 for all channels globally...")
               for name, ch_id in raw_channels:
                   for play_num in range(1, 7):
                       player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
-                      final_channels.append((f"{name} ({play_num})", player_url))
+                      final_channels.append((f"{name} (P{play_num})", player_url))
 
               print("Scraping scheduled live events...")
               html_schedule = get_html("https://daddylive.sx/index.php")
@@ -88,20 +87,24 @@ jobs:
                       stream_url = f"https://daddylive.sx/{href}"
                       final_channels.append((name, stream_url))
 
+              print(f"Writing {len(final_channels)} total channels to file...")
               with open("dlhd.m3u", "w", encoding="utf-8") as f:
                   f.write("#EXTM3U\n\n")
                   for name, url in final_channels:
                       f.write(f'#EXTINF:-1 group-title="DLHD Combined",{name}\n{url}\n\n')
-              print(f"Successfully compiled master list with {len(final_channels)} total streams!")
+              print("Successfully compiled master list!")
 
           if __name__ == "__main__":
               main()
           EOF
           python run_scraper.py
 
-      # API Bypass Push Engine: Hands the file directly to GitHub via API web requests
-      - name: Force Upload New Playlist via API
-        uses: mikeal/publish-to-github-action@master
+      - name: Commit and Push Playlist Updates
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41851482+github-actions[bot]@users.noreply.github.com"
+          git add dlhd.m3u
+          git diff-index --quiet HEAD || git commit -m "Automated Playlist Update"
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: 'main'
