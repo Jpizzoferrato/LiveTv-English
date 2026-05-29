@@ -47,18 +47,18 @@ jobs:
           def main():
               channels = []
               
-              # 1. Scraping 24/7 Channels
+              # 1. Scraping 24/7 Channels by tracking raw stream href links
               print("Scraping 24/7 channels from daddylive.org...")
               html_247 = get_html("https://daddylive.org/24-7-channels.php")
               if html_247:
                   soup = BeautifulSoup(html_247, 'html.parser')
-                  cards = soup.find_all('a', class_='card')
-                  for card in cards:
-                      title_div = card.find('div', class_='card__title')
-                      if not title_div: continue
-                      name = title_div.text.strip()
-                      href = card.get('href', '')
-                      if 'id=' not in href: continue
+                  links = soup.find_all('a', href=re.compile(r'id=\d+'))
+                  print(f"Extracted {len(links)} raw channel links.")
+                  
+                  for link in links:
+                      name = link.text.strip()
+                      href = link.get('href', '')
+                      if not name or 'id=' not in href: continue
                       ch_id = href.split('id=')[1].split('&')[0]
                       
                       if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
@@ -82,7 +82,13 @@ jobs:
                       stream_url = f"https://daddylive.org/{href}"
                       channels.append((name, stream_url))
 
-              # 3. Duplicate Engine (Prevents USA Network backups from dropping)
+              # 3. Duplicate Handling Engine for USA Network Backups
+              if not channels:
+                  print("No channels found. Keeping file generic to prevent crashes.")
+                  with open("dlhd.m3u", "w", encoding="utf-8") as f:
+                      f.write("#EXTM3U\n")
+                  return
+
               name_counts = {}
               for name, _ in channels:
                   name_counts[name] = name_counts.get(name, 0) + 1
