@@ -39,7 +39,6 @@ def main():
             
             raw_channels.append((name, ch_id))
 
-    # FIXED INDENTATION: Safely inside main() now
     print("Generating proxy URLs...")
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
@@ -47,9 +46,8 @@ def main():
             final_channels.append((f"{name} (P{play_num})", stream_url))
 
     print("Writing formatted IPTV lines...")
-    with open("dlhd.m3u", "w", encoding="utf-8") as f:
+    with open("dlhd.m3u", "w", encoding="utf-8", newline='\r\n') as f:
         f.write("#EXTM3U\n\n")
-        
         valid_idx = 1
         for name, url in final_channels:
             clean_name = str(name).split('\n')[0].strip()
