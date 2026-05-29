@@ -42,10 +42,14 @@ def main():
             
             raw_channels.append((name, ch_id))
 
-    print("Generating proxy URLs...")
+    print("Generating proxy URLs with integrated bypass headers...")
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
-            stream_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
+            # FIXED: Embeds browser headers directly into the M3U stream links for ExoPlayer
+            base_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
+            headers_suffix = "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36&Referer=https://daddylive.sx/"
+            stream_url = f"{base_url}{headers_suffix}"
+            
             final_channels.append((f"{name} (P{play_num})", stream_url))
 
     print("Writing formatted IPTV lines...")
@@ -63,25 +67,4 @@ def main():
                 if any(word in name_lower for word in adult_keywords):
                     continue
                 
-            foreign_countries = [
-                "italy", "italia", "spain", "espana", "germany", "deutschland", 
-                "france", "portugal", "arabic", "netherlands", "greece", "cyprus", 
-                "albania", "romania", "poland", "polska", "turkey", "turkiye", 
-                "india", "pakistan", "latino", "mexico", "argentina"
-            ]
-            if any(f" {country}" in name_lower or f"({country})" in name_lower for country in foreign_countries):
-                continue
-            
-            if "live event:" in name_lower or "vs" in name_lower:
-                group = "DLHD Live Sports"
-            elif "uk" in name_lower:
-                group = "DLHD United Kingdom"
-            else:
-                group = "DLHD United States & General"
-                
-            f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}",{clean_name}\n')
-            f.write(f'{url}\n\n')
-            valid_idx += 1
-
-if __name__ == "__main__":
-    main()
+            foreign_countries =
