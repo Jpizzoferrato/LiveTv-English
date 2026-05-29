@@ -67,11 +67,11 @@ jobs:
                       
                       raw_channels.append((name, ch_id))
 
-              # Outputs pure, direct web URLs so the HLS Proxy engine can extract them properly
-              for name, ch_id in raw_channels:
-                  for play_num in range(1, 7):
-                      stream_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
-                      final_channels.append((f"{name} (P{play_num})", stream_url))
+             # Outputs proxy URLs so the home HLS Proxy engine can extract them properly
+          for name, ch_id in raw_channels:
+              for play_num in range(1, 7):
+                  stream_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
+                  final_channels.append((f"{name} (P{play_num})", stream_url))
 
               print("Writing formatted IPTV lines...")
               with open("dlhd.m3u", "w", encoding="utf-8") as f:
