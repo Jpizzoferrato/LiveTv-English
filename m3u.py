@@ -18,7 +18,7 @@ try:
 except ImportError:
     print("ERROR: Missing required libraries. Please run: pip install requests beautifulsoup4 python-dateutil playwright", file=sys.stderr)
 
- # Disable security warnings for requests without SSL verification
+# Disable security warnings for requests without SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def headers_to_extvlcopt(headers):
@@ -32,7 +32,7 @@ def search_m3u8_in_sites(channel_id, is_tennis=False, session=None):
 def dlhd():
     """
     Extracts 24/7 channels and live events from DaddyLive and saves them in a single M3U file.
-    Automatically removes duplicate channels.
+    Automatically keeps all duplicate channels by giving them unique numbers.
     """
     print("Running dlhd...")
 
@@ -102,21 +102,19 @@ def dlhd():
         for name, _ in channels_247:
             name_counts[name] = name_counts.get(name, 0) + 1
  
-        # Add a counter to duplicate names
+        # Add a counter to duplicate names (Ensures ALL duplicates are kept separate)
         final_channels = []
         name_counter = {}
  
         for name, stream_url in channels_247:
             if name_counts[name] > 1:
                 if name not in name_counter:
-                    # First occurrence of a duplicate, keep the original name
                     name_counter[name] = 1
-                    final_channels.append((name, stream_url))
                 else:
-                    # Subsequent occurrences, add counter
                     name_counter[name] += 1
-                    new_name = f"{name} ({name_counter[name]})"
-                    final_channels.append((new_name, stream_url))
+                # Gives every single copy a unique number so they never merge or disappear
+                new_name = f"{name} ({name_counter[name]})"
+                final_channels.append((new_name, stream_url))
             else:
                 final_channels.append((name, stream_url))
 
@@ -249,10 +247,8 @@ def dlhd():
     print(f"  - {len(channels_247)} 24/7 channels")
     print(f"  - {len(live_events)} live events")
 
- # Function for the fourth script (schedule_extractor.py)
+# Function for the fourth script (schedule_extractor.py)
 def schedule_extractor():
-    # Code for the fourth script here
-    # Add the code of your "schedule_extractor.py" script in this function.
     print("Running schedule_extractor.py...")
 
     def html_to_json(html_content):
@@ -276,9 +272,8 @@ def schedule_extractor():
                 if not cat_header:
                     continue
                 
-                # We use the inner HTML to keep any tags, as before
                 current_category_html = cat_header.find('div', class_='card__meta').decode_contents()
-                current_category = current_category_html.strip() + "</span>" # Maintains compatibility with previous format
+                current_category = current_category_html.strip() + "</span>" 
                 result[current_date][current_category] = []
 
                 for event_div in category_div.find_all('div', class_='schedule__event'):
@@ -354,7 +349,7 @@ def schedule_extractor():
                     print(f"Attempt {attempt} of {max_attempts}...")
                     page.goto(url)
                     print("Waiting for full page load...")
-                    page.wait_for_timeout(10000)  # 10 seconds
+                    page.wait_for_timeout(10000)
 
                     schedule_content = page.evaluate("""() => {
                         const container = document.querySelector('body');
@@ -399,8 +394,6 @@ def schedule_extractor():
             exit(1)
 
 def vavoo_channels():
-    # Code for the seventh script here
-    # Add the code of your "world_channels_generator.py" script in this function.
     print("Running vavoo_channels...")
     
     def getAuthSignature():
@@ -430,12 +423,9 @@ def vavoo_channels():
         return resp.json().get("signature")
     
     def vavoo_groups():
-        # You can add more groups for more channels
         return [""]
     
     def clean_channel_name(name):
-        """Removes .a, .b, .c suffixes from the channel name"""
-        # Removes .a, .b, .c at the end of the name (with or without spaces before)
         cleaned_name = re.sub(r'\s*\.(a|b|c|s|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|t|u|v|w|x|y|z)\s*$', '', name, flags=re.IGNORECASE)
         return cleaned_name.strip()
     
@@ -474,7 +464,6 @@ def vavoo_channels():
         return all_channels
     
     def save_as_m3u(channels, filename="vavoo.m3u"):
-        # 1. Collect all channels into a flat list
         all_channels_flat = []
         for ch in channels:
             original_name = ch.get("name", "NoName")
@@ -484,12 +473,10 @@ def vavoo_channels():
             if url:
                 all_channels_flat.append({'name': name, 'url': url, 'category': category})
 
-        # 2. Count occurrences of each name
         name_counts = {}
         for ch_data in all_channels_flat:
             name_counts[ch_data['name']] = name_counts.get(ch_data['name'], 0) + 1
 
-        # 3. Rename duplicates
         final_channels_data = []
         name_counter = {}
         for ch_data in all_channels_flat:
@@ -497,7 +484,7 @@ def vavoo_channels():
             if name_counts[name] > 1:
                 if name not in name_counter:
                     name_counter[name] = 1
-                    new_name = name  # Keep the original name for the first occurrence
+                    new_name = name
                 else:
                     name_counter[name] += 1
                     new_name = f"{name} ({name_counter[name]})"
@@ -505,7 +492,6 @@ def vavoo_channels():
                 new_name = name
             final_channels_data.append({'name': new_name, 'url': ch_data['url'], 'category': ch_data['category']})
 
-        # 4. Group channels by category for file writing
         channels_by_category = {}
         for ch_data in final_channels_data:
             category = ch_data['category']
@@ -513,7 +499,6 @@ def vavoo_channels():
                 channels_by_category[category] = []
             channels_by_category[category].append((ch_data['name'], ch_data['url']))
 
-        # 5. Write the M3U file
         with open(filename, "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
             for category in sorted(channels_by_category.keys()):
@@ -538,25 +523,18 @@ def sportsonline():
     from bs4 import BeautifulSoup
     import datetime
     
-    # URL of the schedule file
     PROG_URL = "https://sportsonline.sn/prog.txt"
-    OUTPUT_FILE = "sportsonline.m3u"  # Defined as a constant
+    OUTPUT_FILE = "sportsonline.m3u"
     
     def get_channel_languages(lines):
-        """
-        Analyzes the lines of the schedule file to map channels with their languages.
-        Returns a dictionary with key=channel_id and value=language (e.g. {'hd7': 'ITALIAN'}).
-        """
         channel_language_map = {}
         for line in lines:
             line_stripped = line.strip()
-            # Look for lines that define the language of a channel (format: "HD7 ITALIAN")
             if line_stripped and not line_stripped.startswith(('http', '|', '#')) and ' ' in line_stripped:
                 parts = line_stripped.split(maxsplit=1)
                 if len(parts) == 2:
                     channel_id_raw = parts[0].strip()
                     language = parts[1].strip()
-                    # Check that the first element is a channel ID (e.g. HD7, BR1, etc.)
                     if channel_id_raw and not any(day in channel_id_raw.upper() for day in 
                         ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]):
                         channel_id = channel_id_raw.lower()
@@ -565,10 +543,6 @@ def sportsonline():
         return channel_language_map
     
     def extract_channel_from_url(url):
-        """
-        Extracts the channel identifier from the URL.
-        Ex: https://sportzonline.st/channels/hd/hd5.php -> hd5
-        """
         match = re.search(r'/([a-z0-9]+)\.php$', url, re.IGNORECASE)
         if match:
             return match.group(1).lower()
@@ -576,7 +550,6 @@ def sportsonline():
     
     print("Running sportsonline...")
     
-    # --- Check the day of the week ---
     today_weekday = datetime.date.today().weekday()
     weekdays_english = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
     day_to_filter = weekdays_english[today_weekday]
@@ -608,7 +581,6 @@ def sportsonline():
     for line in lines:
         line_upper = line.upper().strip()
 
-        # Check if the line is a weekday header
         if line_upper in weekdays_english:
             if line_upper == day_to_filter:
                 processing_today_events = True
@@ -616,7 +588,6 @@ def sportsonline():
                 processing_today_events = False
             continue
 
-        # Process the line only if we are in the correct day's section
         if not processing_today_events:
             continue
 
@@ -630,19 +601,16 @@ def sportsonline():
         event_info = parts[0].strip()
         page_url = parts[1].strip()
 
-        # Extract the channel from the URL
         channel_id = extract_channel_from_url(page_url)
         
         if channel_id and channel_id in channel_language_map:
             language = channel_language_map[channel_id]
             print(f"\n[EVENT] Found event: '{event_info}' - Channel: {channel_id.upper()} - Language: {language}")
             
-            # Reformat the event name: Event Name Time [LANGUAGE]
             event_parts = event_info.split(maxsplit=1)
             if len(event_parts) == 2:
                 time_str_original, name_only = event_parts
                 
-                # Add 1 hour to the time
                 try:
                     original_time = datetime.datetime.strptime(time_str_original.strip(), '%H:%M')
                     new_time = original_time + datetime.timedelta(hours=1)
@@ -661,7 +629,6 @@ def sportsonline():
                 "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             })
     
-    # Create fallback channel if there are no events
     if not playlist_entries:
         print("\n[INFO] No events found today.")
         print("[INFO] Creating fallback channel 'NO EVENT'...")
@@ -672,7 +639,6 @@ def sportsonline():
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         })
 
-    # 4. Create the M3U file
     print(f"\n4. Writing playlist to file: {OUTPUT_FILE}")
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
