@@ -28,7 +28,7 @@ def main():
             # Target the exact /proxy/ endpoint the unified-iptv-proxy container is looking for
             daddylive_target = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
             stream_url = f"http://pizzotv.duckdns.org:8080/proxy/manifest.m3u8?url={daddylive_target}"
-            final_channels.append((f"{name} (P{play_num})", stream_url))
+            final_channels.append((f"{name} (P{play_num})", stream_url)
 
     # Writing out the formatted M3U8 playlist file
     print("Writing playlist to file...")
