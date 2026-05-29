@@ -4,10 +4,9 @@ import requests
 def fetch_channels():
     """Fetches raw channel data from the source."""
     print("Fetching raw channel list...")
-    # This matches your scraper's target logic
-    # Returning a sample mock list structure for the loop processing
     try:
-        # (Replace this mock list with your actual scraping/request logic if needed)
+        # If you need your real scraper logic here, make sure to add it.
+        # This keeps the current layout safe so the file compiles.
         channels = [("Sky Sports Main Event", "51"), ("TNT Sports 1", "52")]
         return channels
     except Exception as e:
