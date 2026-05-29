@@ -67,16 +67,17 @@ jobs:
 
               final_channels = []
               
+              # Global Unwrapper: Processes every channel for up to 6 backup players
+              print("Expanding multi-player backup links globally...")
               for name, ch_id in raw_channels:
-                  # If it is our target network, expand the multi-player embeds manually
-                  if "usa network" in name.lower():
-                      # Map out the 6 alternative backend players shown in your screenshot
-                      for play_num in range(1, 7):
-                          player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
-                          final_channels.append((f"USA Network ({play_num})", player_url))
-                  else:
-                      standard_url = f"https://daddylive.sx/watch.php?id={ch_id}"
-                      final_channels.append((name, standard_url))
+                  for play_num in range(1, 7):
+                      player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
+                      
+                      # Keep name normal for the first player, number the backups cleanly
+                      if play_num == 1:
+                          final_channels.append((name, player_url))
+                      else:
+                          final_channels.append((f"{name} (Backup {play_num})", player_url))
 
               print("Scraping scheduled events...")
               html_schedule = get_html("https://daddylive.sx/index.php")
@@ -96,7 +97,7 @@ jobs:
                   f.write("#EXTM3U\n\n")
                   for name, url in final_channels:
                       f.write(f'#EXTINF:-1 group-title="DLHD Combined",{name}\n{url}\n\n')
-              print(f"Successfully generated playlist file with {len(final_channels)} channels!")
+              print(f"Successfully generated playlist file with {len(final_channels)} total streams!")
 
           if __name__ == "__main__":
               main()
