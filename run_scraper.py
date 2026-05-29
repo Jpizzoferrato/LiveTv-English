@@ -46,7 +46,8 @@ def main():
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
             base_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
-            headers_suffix = "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36&Referer=https://daddylive.sx/"
+            # FIXED: Changed &Referer= to &referrer= to match Lemurs/ExoPlayer formatting
+            headers_suffix = "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36&referrer=https://daddylive.sx/"
             stream_url = f"{base_url}{headers_suffix}"
             final_channels.append((f"{name} (P{play_num})", stream_url))
 
