@@ -22,8 +22,6 @@ def main():
     raw_channels = []
     final_channels = []
     
-    duckdns_domain = "pizzotv.duckdns.org"
-    
     print("Scraping 24/7 channels...")
     html_247 = get_html("https://daddylive.sx/24-7-channels.php")
     if html_247:
@@ -41,10 +39,11 @@ def main():
             
             raw_channels.append((name, ch_id))
 
-    # Rebuilds the URLs using your DuckDNS domain directly
+    # Loops through and routes everything straight through your HLS Proxy Server address
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
-            stream_url = f"http://{duckdns_domain}/embed/stream-{ch_id}.php?p={play_num}"
+            # Builds the stream path pointing back to your home proxy setup
+            stream_url = f"http://pizzotv.duckdns.org:8095/embed/stream-{ch_id}.php?p={play_num}"
             final_channels.append((f"{name} (P{play_num})", stream_url))
 
     print("Writing formatted IPTV lines...")
@@ -79,9 +78,9 @@ def main():
             else:
                 group = "DLHD United States & General"
                 
-            # Writes the line with your DuckDNS domain AND the exact double-r referrer format for Sparkle TV
+            # Formats the lines specifically for your proxy's extraction setup
             f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}",{clean_name}\n')
-            f.write(f'{url}|user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36|referrer=https://daddylive.sx/\n\n')
+            f.write(f'{url}\n\n')
             valid_idx += 1
 
 if __name__ == "__main__":
