@@ -10,10 +10,8 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Pulls complete history to align Git states
-      
+        uses: actions/checkout@v4  # Quick download, no deep history hang
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -36,24 +34,26 @@ jobs:
 
           def get_html(url):
               headers = {
-                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+                  "Accept-Language": "en-US,en;q=0.9"
               }
               try:
-                  res = requests.get(url, headers=headers, timeout=15, verify=False)
+                  res = requests.get(url, headers=headers, timeout=8, verify=False)
                   res.raise_for_status()
                   return res.text
               except Exception as e:
-                  print(f"Error loading {url}: {e}")
+                  print(f"Link skipped: {url}")
                   return None
 
           def main():
               channels = []
               
-              print("Scraping 24/7 channels from daddylive.org...")
-              html_247 = get_html("https://daddylive.org/24-7-channels.php")
+              print("Scraping 24/7 channels...")
+              html_247 = get_html("https://daddylive.sx/24-7-channels.php")
               if html_247:
                   soup = BeautifulSoup(html_247, 'html.parser')
                   links = soup.find_all('a', href=re.compile(r'id=\d+'))
+                  print(f"Found {len(links)} channels.")
                   
                   for link in links:
                       name = link.text.strip()
@@ -64,11 +64,11 @@ jobs:
                       if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
                       if ch_id == "853": name = "Canale 5 Italy"
                       
-                      stream_url = f"https://daddylive.org/watch.php?id={ch_id}"
+                      stream_url = f"https://daddylive.sx/watch.php?id={ch_id}"
                       channels.append((name, stream_url))
 
-              print("Scraping live scheduled events from daddylive.org...")
-              html_schedule = get_html("https://daddylive.org/index.php")
+              print("Scraping scheduled events...")
+              html_schedule = get_html("https://daddylive.sx/index.php")
               if html_schedule:
                   soup = BeautifulSoup(html_schedule, 'html.parser')
                   event_links = soup.find_all('a', href=re.compile(r'stream-\d+\.php'))
@@ -78,13 +78,11 @@ jobs:
                       if not name or not href: continue
                       if "Stream" in name:
                           name = f"Live Event: {name}"
-                      stream_url = f"https://daddylive.org/{href}"
+                      stream_url = f"https://daddylive.sx/{href}"
                       channels.append((name, stream_url))
 
               if not channels:
-                  print("No channels found. Keeping file generic to prevent crashes.")
-                  with open("dlhd.m3u", "w", encoding="utf-8") as f:
-                      f.write("#EXTM3U\n")
+                  print("No data grabbed.")
                   return
 
               name_counts = {}
@@ -108,7 +106,7 @@ jobs:
                   f.write("#EXTM3U\n\n")
                   for name, url in final_channels:
                       f.write(f'#EXTINF:-1 group-title="DLHD Combined",{name}\n{url}\n\n')
-              print(f"Successfully created dlhd.m3u with {len(final_channels)} total channels!")
+              print(f"Successfully generated playlist file with {len(final_channels)} channels!")
 
           if __name__ == "__main__":
               main()
@@ -120,11 +118,10 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      - name: Add generated files to commit
+      - name: Force Upload New Playlist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add dlhd.m3u
-          git commit -m "UPDATE PLAYLIST" || echo "No changes to commit"
-
-      - name: Push changes
-        run: |
-          git push origin main --force
+          git commit -m "Automated Playlist Update [skip ci]" || echo "No changes"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main --force
