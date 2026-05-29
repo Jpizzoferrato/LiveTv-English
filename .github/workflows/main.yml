@@ -4,11 +4,6 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:  # Allows manual execution
 
-# The magic security keys that allow the script to save files back to your repo
-permissions:
-  contents: write
-  id-token: write
-
 jobs:
   extract-data:
     runs-on: ubuntu-latest
@@ -73,7 +68,6 @@ jobs:
 
               final_channels = []
               
-              # This expands players 1-6 for EVERY channel found on the site
               print("Unwrapping hidden players 1-6 for all channels globally...")
               for name, ch_id in raw_channels:
                   for play_num in range(1, 7):
@@ -105,14 +99,9 @@ jobs:
           EOF
           python run_scraper.py
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      # The foolproof bypass push line that force-updates the actual file in your repository
-      - name: Force Upload New Playlist
-        run: |
-          git add dlhd.m3u
-          git commit -m "Automated Playlist Update [skip ci]" || echo "No changes"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main --force
+      # API Bypass Push Engine: Hands the file directly to GitHub via API web requests
+      - name: Force Upload New Playlist via API
+        uses: mikeal/publish-to-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: 'main'
