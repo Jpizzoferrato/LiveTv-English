@@ -1,8 +1,9 @@
 name: RUN SCRIPT
+
 on:
   schedule:
-    - cron: '0 6 * * *'
-  workflow_dispatch:  # Allows manual execution
+    - cron: '0 */2 * * *'  # Automatically runs every 2 hours, 24/7
+  workflow_dispatch:      # Allows manual execution
 
 jobs:
   extract-data:
