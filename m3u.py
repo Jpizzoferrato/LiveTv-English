@@ -26,8 +26,8 @@ def headers_to_extvlcopt(headers):
     return []
 
 def search_m3u8_in_sites(channel_id, is_tennis=False, session=None):
-    """Directly generates the dlhd.dad URL for the provided channel_id."""
-    return f"https://dlhd.dad/watch.php?id={channel_id}"
+    """Directly generates the daddylive URL for the provided channel_id."""
+    return f"https://daddylive.sx/watch.php?id={channel_id}"
 
 def dlhd():
     """
@@ -52,7 +52,7 @@ def dlhd():
 
     # ========== EXTRACTION OF 24/7 CHANNELS ==========
     print("Extracting 24/7 channels from HTML page...")
-    html_url = "https://dlhd.dad/24-7-channels.php"
+    html_url = "https://daddylive.sx/24-7-channels.php"
     session = requests.Session()
 
     try:
@@ -329,7 +329,7 @@ def schedule_extractor():
         print(f"JSON file modified and saved in {json_file_path}")
     
     def extract_schedule_container():
-        url = f"https://dlhd.dad/"
+        url = f"https://daddylive.sx/"
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
         json_output = os.path.join(script_dir, "daddyliveSchedule.json")
