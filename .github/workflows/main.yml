@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Pulls complete history to align Git states
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -47,13 +49,11 @@ jobs:
           def main():
               channels = []
               
-              # 1. Scraping 24/7 Channels by tracking raw stream href links
               print("Scraping 24/7 channels from daddylive.org...")
               html_247 = get_html("https://daddylive.org/24-7-channels.php")
               if html_247:
                   soup = BeautifulSoup(html_247, 'html.parser')
                   links = soup.find_all('a', href=re.compile(r'id=\d+'))
-                  print(f"Extracted {len(links)} raw channel links.")
                   
                   for link in links:
                       name = link.text.strip()
@@ -67,7 +67,6 @@ jobs:
                       stream_url = f"https://daddylive.org/watch.php?id={ch_id}"
                       channels.append((name, stream_url))
 
-              # 2. Scraping Live Schedule Events
               print("Scraping live scheduled events from daddylive.org...")
               html_schedule = get_html("https://daddylive.org/index.php")
               if html_schedule:
@@ -82,7 +81,6 @@ jobs:
                       stream_url = f"https://daddylive.org/{href}"
                       channels.append((name, stream_url))
 
-              # 3. Duplicate Handling Engine for USA Network Backups
               if not channels:
                   print("No channels found. Keeping file generic to prevent crashes.")
                   with open("dlhd.m3u", "w", encoding="utf-8") as f:
@@ -122,13 +120,11 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      - name: Download the latest changes from the remote repository
-        run: git pull --rebase origin main || echo "No remote changes to merge"
-
       - name: Add generated files to commit
         run: |
           git add dlhd.m3u
           git commit -m "UPDATE PLAYLIST" || echo "No changes to commit"
 
       - name: Push changes
-        run: git push
+        run: |
+          git push origin main --force
