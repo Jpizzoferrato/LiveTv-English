@@ -7,8 +7,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_html(url):
     headers = {
+        def get_html(url):
+    headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-        "Referer": "https://daddylive.sx/"
+        "Referer": "https://daddylive.sx/",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Connection": "keep-alive"
     }
     try:
         res = requests.get(url, headers=headers, timeout=10, verify=False)
@@ -42,7 +47,8 @@ def main():
     print("Generating proxy URLs...")
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
-            stream_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
+            # FIXED: Using referrer signature instead of refs
+            stream_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}&referrer=https://daddylive.sx/"
             final_channels.append((f"{name} (P{play_num})", stream_url))
 
     print("Writing formatted IPTV lines...")
