@@ -10,7 +10,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4  # Quick download, no deep history hang
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -46,14 +46,13 @@ jobs:
                   return None
 
           def main():
-              channels = []
+              raw_channels = []
               
               print("Scraping 24/7 channels...")
               html_247 = get_html("https://daddylive.sx/24-7-channels.php")
               if html_247:
                   soup = BeautifulSoup(html_247, 'html.parser')
                   links = soup.find_all('a', href=re.compile(r'id=\d+'))
-                  print(f"Found {len(links)} channels.")
                   
                   for link in links:
                       name = link.text.strip()
@@ -64,8 +63,20 @@ jobs:
                       if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
                       if ch_id == "853": name = "Canale 5 Italy"
                       
-                      stream_url = f"https://daddylive.sx/watch.php?id={ch_id}"
-                      channels.append((name, stream_url))
+                      raw_channels.append((name, ch_id))
+
+              final_channels = []
+              
+              for name, ch_id in raw_channels:
+                  # If it is our target network, expand the multi-player embeds manually
+                  if "usa network" in name.lower():
+                      # Map out the 6 alternative backend players shown in your screenshot
+                      for play_num in range(1, 7):
+                          player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
+                          final_channels.append((f"USA Network ({play_num})", player_url))
+                  else:
+                      standard_url = f"https://daddylive.sx/watch.php?id={ch_id}"
+                      final_channels.append((name, standard_url))
 
               print("Scraping scheduled events...")
               html_schedule = get_html("https://daddylive.sx/index.php")
@@ -79,28 +90,7 @@ jobs:
                       if "Stream" in name:
                           name = f"Live Event: {name}"
                       stream_url = f"https://daddylive.sx/{href}"
-                      channels.append((name, stream_url))
-
-              if not channels:
-                  print("No data grabbed.")
-                  return
-
-              name_counts = {}
-              for name, _ in channels:
-                  name_counts[name] = name_counts.get(name, 0) + 1
-
-              final_channels = []
-              name_counter = {}
-              for name, url in channels:
-                  if name_counts[name] > 1:
-                      if name not in name_counter:
-                          name_counter[name] = 1
-                      else:
-                          name_counter[name] += 1
-                      new_name = f"{name} ({name_counter[name]})"
-                      final_channels.append((new_name, url))
-                  else:
-                      final_channels.append((name, url))
+                      final_channels.append((name, stream_url))
 
               with open("dlhd.m3u", "w", encoding="utf-8") as f:
                   f.write("#EXTM3U\n\n")
