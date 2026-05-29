@@ -42,13 +42,14 @@ def main():
             
             raw_channels.append((name, ch_id))
 
-    print("Generating proxy URLs with integrated browser headers...")
+   print("Generating proxy URLs...")
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
-            base_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
-            # FIXED: Changed &Referer= to &referrer= to match Lemurs/ExoPlayer formatting
-            headers_suffix = "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36&referrer=https://daddylive.sx/"
-            stream_url = f"{base_url}{headers_suffix}"
+            # Target the exact /proxy/ endpoint the container is looking for
+            # We pass the real DaddyLive URL as the '?url=' parameter
+            daddylive_target = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
+            stream_url = f"http://pizzotv.duckdns.org:8080/proxy/manifest.m3u8?url={daddylive_target}"
+            
             final_channels.append((f"{name} (P{play_num})", stream_url))
 
     print("Writing formatted IPTV lines...")
