@@ -20,6 +20,7 @@ def get_html(url):
 
 def main():
     raw_channels = []
+    final_channels = []
     
     print("Scraping 24/7 channels...")
     html_247 = get_html("https://daddylive.sx/24-7-channels.php")
@@ -39,13 +40,11 @@ def main():
             
             raw_channels.append((name, ch_id))
 
-    final_channels = []
-    
     print("Unwrapping hidden players 1-6 for all channels globally...")
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
             player_url = f"https://daddylive.sx/embed/stream-{ch_id}.php?p={play_num}"
-            final_channels.append((f"{name} ({play_num})", player_url))
+            final_channels.append((f"{name} (P{play_num})", player_url))
 
     print("Scraping scheduled live events...")
     html_schedule = get_html("https://daddylive.sx/index.php")
@@ -61,11 +60,45 @@ def main():
             stream_url = f"https://daddylive.sx/{href}"
             final_channels.append((name, stream_url))
 
+    print(f"Writing {len(final_channels)} total channels to file...")
     with open("dlhd.m3u", "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n\n")
+        
+        valid_idx = 1
         for name, url in final_channels:
-            f.write(f'#EXTINF:-1 group-title="DLHD Combined",{name}\n{url}\n\n')
-    print(f"Successfully compiled master list with {len(final_channels)} total streams!")
+            clean_name = str(name).split('\n')[0].strip()
+            name_lower = clean_name.lower()
+            
+            # 1. Block Adult / 18+ content (with an EXCEPTION for Adult Swim)
+            if "adult swim" in name_lower:
+                pass # Safe! Skip the block rule entirely for this channel
+            else:
+                adult_keywords = ["xxx", "porn", "adult", "18+", "playboy", "hustler", "penthouse", "pink", "brazzers"]
+                if any(word in name_lower for word in adult_keywords):
+                    continue
+                
+            # 2. Block Non-English International countries 
+            foreign_countries = [
+                "italy", "italia", "spain", "espana", "germany", "deutschland", 
+                "france", "portugal", "arabic", "netherlands", "greece", "cyprus", 
+                "albania", "romania", "poland", "polska", "turkey", "turkiye", 
+                "india", "pakistan", "latino", "mexico", "argentina"
+            ]
+            if any(f" {country}" in name_lower or f"({country})" in name_lower for country in foreign_countries):
+                continue
+            
+            # 3. Automatically sort remaining channels into clean categories
+            if "live event:" in name_lower or "vs" in name_lower:
+                group = "DLHD Live Sports"
+            elif "uk" in name_lower:
+                group = "DLHD United Kingdom"
+            else:
+                group = "DLHD United States & General"
+                
+            f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="DLHD Combined",{clean_name}\n{url}\n\n')
+            valid_idx += 1
+            
+    print("Successfully compiled filtered master list!")
 
 if __name__ == "__main__":
     main()
