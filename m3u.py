@@ -45,8 +45,8 @@ def main():
             if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
             if ch_id == "853": name = "Canale 5 Italy"
             
-            # Pure, clean source link for the local proxy builder
-            stream_url = f"https://dlhd.sx/stream/stream-{ch_id}.php"
+            # Pure, clean source link pointing to the new live .pk server
+            stream_url = f"https://dlhd.pk/stream/stream-{ch_id}.php"
             channels.append((name, stream_url))
 
     # ==========================================
@@ -57,6 +57,7 @@ def main():
     
     if html_schedule:
         soup = BeautifulSoup(html_schedule, 'html.parser')
+        # Find event links inside the schedule grid
         event_links = soup.find_all('a', href=re.compile(r'stream-\d+\.php'))
         print(f"Found {len(event_links)} scheduled event links.")
         
@@ -72,7 +73,8 @@ def main():
             match = re.search(r'stream-(\d+)\.php', href)
             if match:
                 ch_id = match.group(1)
-                stream_url = f"https://dlhd.sx/stream/stream-{ch_id}.php"
+                # Pure, clean source link pointing to the new live .pk server
+                stream_url = f"https://dlhd.pk/stream/stream-{ch_id}.php"
                 channels.append((name, stream_url))
 
     # ==========================================
@@ -115,4 +117,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
