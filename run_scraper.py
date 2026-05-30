@@ -8,7 +8,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def get_html(url):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-        "Referer": "https://daddylive.pk/"
+        "Referer": "https://daddylive.nl/"
     }
     try:
         res = requests.get(url, headers=headers, timeout=10, verify=False)
@@ -23,7 +23,7 @@ def main():
     final_channels = []
     
     print("Scraping 24/7 channels...")
-    html_247 = get_html("https://daddylive.pk/24-7-channels.php")
+    html_247 = get_html("https://daddylive.nl/24-7-channels.php")
     if html_247:
         soup = BeautifulSoup(html_247, 'html.parser')
         links = soup.find_all('a', href=re.compile(r'id='))
@@ -38,6 +38,11 @@ def main():
             if ch_id == "853": name = "Canale 5 Italy"
             
             raw_channels.append((name, ch_id))
+
+    # SAFETY BRAKE: Protects your file if the mirror site drops the connection
+    if not raw_channels:
+        print("⚠️ No channels found! Stopping run to protect your current dlhd.m3u file.")
+        return
 
     print("Generating proxy URLs...")
     for name, ch_id in raw_channels:
