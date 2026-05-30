@@ -28,26 +28,9 @@ jobs:
           cat << 'EOF' > run_scraper.py
           import requests
           import urllib3
-          import json
           import re
 
           urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-          def slugify(name):
-              char_map = {
-                  'á':'a','à':'a','â':'a','ä':'a','ã':'a','å':'a','æ':'ae',
-                  'é':'e','è':'e','ê':'e','ë':'e','í':'i','ì':'i','î':'i','ï':'i',
-                  'ó':'o','ò':'o','ô':'o','ö':'o','õ':'o','ø':'o','œ':'oe',
-                  'ú':'u','ù':'u','û':'u','ü':'u','ý':'y','ÿ':'y',
-                  'ñ':'n','ç':'c','ß':'ss','ð':'d','þ':'th'
-              }
-              text = name.strip().lower()
-              for c, r in char_map.items():
-                  text = text.replace(c, r)
-              text = re.sub(r'\s+', '-', text)
-              text = re.sub(r'[^a-z0-9\-]', '', text)
-              text = re.sub(r'-{2,}', '-', text)
-              return text.strip('-')
 
           def main():
               raw_channels = []
@@ -55,23 +38,28 @@ jobs:
               
               headers = {
                   "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-                  "Referer": "https://daddylive.org/channel"
+                  "Referer": "https://dlhd.pk/"
               }
               
-              url = "https://daddylive.org/cache/channels.json"
-              print(f"Fetching channels directly from database endpoint: {url}")
+              # Pulling directly from the open public web directory to bypass the protected API key wall
+              url = "https://dlhd.pk/index.php"
+              print(f"Scraping public directory endpoint: {url}")
               
               try:
                   res = requests.get(url, headers=headers, timeout=15, verify=False)
                   if res.status_code == 200:
-                      channels_data = res.json()
+                      # Matches the standard numeric web paths used across the public site layout
+                      matches = re.findall(r'href=["\'](?:https://dlhd\.pk)?/stream/stream-(\d+)\.php["\'][^>]*>(.*?)</a>', res.text)
                       
-                      for ch in channels_data:
-                          ch_id = str(ch.get('id', '')).strip()
-                          name = str(ch.get('title', '')).strip()
+                      for ch_id, name in matches:
+                          ch_id = str(ch_id).strip()
+                          name = str(name).strip()
                           
                           if not ch_id or not name or ch_id == "00":
                               continue
+                              
+                          # Cleaning potential leftover HTML tags from web extraction
+                          name = re.sub(r'<[^>]+>', '', name).strip()
                           
                           if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
                           if ch_id == "853": name = "Canale 5 Italy"
@@ -83,20 +71,15 @@ jobs:
                   print(f"Network processing error occurred: {e}")
 
               if not raw_channels:
-                  print("⚠️ No channels parsed! Stopping run to protect your current dlhd.m3u file.")
+                  print("⚠️ No channels parsed from the public layout! Stopping run to protect your playlist.")
                   return
 
-              print(f"✅ Successfully loaded {len(raw_channels)} raw channels. Formatting php proxy links without DNS...")
+              print(f"✅ Successfully extracted {len(raw_channels)} clean public channels. Mapping proxy endpoints...")
               
               for name, ch_id in raw_channels:
-                  if ch_id.isdigit() and int(ch_id) < 500:
-                      stream_identifier = ch_id
-                  else:
-                      stream_identifier = slugify(name)
-                      
+                  # Generates the exact 1-6 player loops matching your proxy server config
                   for play_num in range(1, 7):
-                      # DuckDNS stripped out completely, but the exact proxy stream php path and duplicates remain
-                      stream_url = f"/dlhd/stream-{stream_identifier}.php?p={play_num}"
+                      stream_url = f"/dlhd/stream-{ch_id}.php?p={play_num}"
                       final_channels.append((f"{name} (P{play_num})", stream_url))
 
               print("Writing processed IPTV playlist lines...")
@@ -130,7 +113,7 @@ jobs:
                               "italy", "italia", "spain", "espana", "germany", "deutschland", " de", "(de)",
                               "france", "fr ", "portugal", "arabic", "netherlands", "greece", "cyprus", 
                               "albania", "romania", "poland", "polska", "turkey", "turkiye", "indonesia", "indosiar",
-                              "india", "pak Pakistan", "latino", "mexico", "argentina", "austria", "slovakia", "slovenia",
+                              "india", "pakistan", "latino", "mexico", "argentina", "austria", "slovakia", "slovenia",
                               "sweden", "chile", "colombia", "peru", "ecuador", "venezuela", "uruguay", "paraguay",
                               "tabii", "eleven sports", "dazn", "bein sports", "superSport", "canale", "rai", "rtve"
                           ]
@@ -142,11 +125,11 @@ jobs:
                       else:
                           group = "DLHD United States & General"
                           
-                      f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}" http-referrer="https://daddylive.org/",{clean_name}\n')
-                      f.write(f'#EXTVLCOPT:http-referrer=https://daddylive.org/\n')
+                      f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}" http-referrer="https://dlhd.pk/",{clean_name}\n')
+                      f.write(f'#EXTVLCOPT:http-referrer=https://dlhd.pk/\n')
                       f.write(f'{url}\n\n')
                       valid_idx += 1
-              print(f"All done! Processed {valid_idx - 1} entries into your playlist.")
+              print(f"All done! Processed {valid_idx - 1} entries using the dlhd.pk directory framework.")
 
           if __name__ == "__main__":
               main()
@@ -158,7 +141,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41851482+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff-index --quiet HEAD || git commit -m "Strip DuckDNS domain but preserve exact proxy php layout and duplicates"
+          git diff-index --quiet HEAD || git commit -m "Migrate build engine to public dlhd.pk directory scraping"
           git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
