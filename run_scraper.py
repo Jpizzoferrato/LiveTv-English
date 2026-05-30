@@ -1,110 +1,33 @@
-import requests
-import urllib3
-import re
-
+import requests, urllib3, re
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-def main():
-    raw_channels = []
-    final_channels = []
-    
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-        "Referer": "https://dlhd.pk/24-7-channels.php"
-    }
-    
-    # Targeted directly at the sub-page from your screenshot
-    url = "https://dlhd.pk/24-7-channels.php"
-    print(f"Scraping active 24/7 directory endpoint: {url}")
-    
-    try:
-        res = requests.get(url, headers=headers, timeout=15, verify=False)
-        if res.status_code == 200:
-            # Flexible regex to catch full URLs or relative paths like /stream/stream-123.php or stream-123.php
-            matches = re.findall(r'href=["\'](?:https://dlhd\.pk)?/?(?:stream/)?stream-(\d+)\.php["\'][^>]*>(.*?)</a>', res.text)
-            
-            for ch_id, name in matches:
-                ch_id = str(ch_id).strip()
-                name = str(name).strip()
-                
-                if not ch_id or not name or ch_id == "00":
-                    continue
-                    
-                # Strip out any remaining image tags or HTML style elements inside the link text
-                name = re.sub(r'<[^>]+>', '', name).strip()
-                
-                if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
-                if ch_id == "853": name = "Canale 5 Italy"
-                
-                raw_channels.append((name, ch_id))
-        else:
-            print(f"Server returned non-200 status code: {res.status_code}")
-    except Exception as e:
-        print(f"Network processing error occurred: {e}")
-
-    if not raw_channels:
-        print("⚠️ Still no channels parsed! Let's widen the search net...")
-        # Backup looser check in case links don't say stream-X.php directly in the href tag
-        if 'res' in locals() and res.status_code == 200:
-            backup_matches = re.findall(r'stream-(\d+)\.php', res.text)
-            print(f"Found {len(backup_matches)} raw stream instances in source text via backup scanner.")
-        return
-
-    print(f"✅ Successfully extracted {len(raw_channels)} channels from the 24/7 page. Mapping proxy loops...")
-    
-    for name, ch_id in raw_channels:
-        for play_num in range(1, 7):
-            stream_url = f"/dlhd/stream-{ch_id}.php?p={play_num}"
-            final_channels.append((f"{name} (P{play_num})", stream_url))
-
-    print("Writing processed IPTV playlist lines...")
-    with open("dlhd.m3u", "w", encoding="utf-8") as f:
-        f.write("#EXTM3U\n\n")
-        
-        valid_idx = 1
-        for name, url in final_channels:
-            clean_name = str(name).split('\n')[0].strip()
+url = 'https://dlhd.pk/24-7-channels.php'
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36', 'Accept': 'text/html', 'Referer': 'https://dlhd.pk/'}
+final_channels = []
+try:
+    res = requests.get(url, headers=headers, timeout=20, verify=False)
+    if res.status_code == 200:
+        matches = re.findall(r'href=["\'][^"\']*?watch\.php\?id=(\d+)[^"\']*?["\']\s+data-title=["\']([^"\']+)["\']', res.text)
+        if not matches:
+            matches = re.findall(r'data-title=["\']([^"\']+)["\']\s+href=["\'][^"\']*?watch\.php\?id=(\d+)', res.text)
+            if matches: matches = [(item[1], item[0]) for item in matches]
+        for ch_id, name in matches:
+            ch_id, clean_name = str(ch_id).strip(), str(name).strip().upper()
+            if not ch_id or not clean_name or ch_id == '00': continue
             name_lower = clean_name.lower()
-            
-            if "adult swim" in name_lower:
-                pass 
-            else:
-                adult_keywords = ["xxx", "porn", "adult", "18+", "playboy", "hustler", "penthouse", "pink", "brazzers"]
-                if any(word in name_lower for word in adult_keywords):
-                    continue
-                
-            if "news" in name_lower or "msnbc" in name_lower or "cnn" in name_lower or "cbsn" in name_lower:
-                if "fox" in name_lower or "israel" in name_lower or "i24" in name_lower:
-                    pass
-                else:
-                    continue
-                    
-            is_israel_feed = any(word in name_lower for word in ["israel", "i24", "ch 12 il", "ch 13 il", "ch 11 il"])
-            is_sky_sports = "sky sports" in name_lower
-            
-            if not is_israel_feed and not is_sky_sports:
-                global_exclusions = [
-                    "uk", "united kingdom", "itv", "bbc", "bt sport", "premier sports", "tnt sports",
-                    "italy", "italia", "spain", "espana", "germany", "deutschland", " de", "(de)",
-                    "france", "fr ", "portugal", "arabic", "netherlands", "greece", "cyprus", 
-                    "albania", "romania", "poland", "polska", "turkey", "turkiye", "indonesia", "indosiar",
-                    "india", "pakistan", "latino", "mexico", "argentina", "austria", "slovakia", "slovenia",
-                    "sweden", "chile", "colombia", "peru", "ecuador", "venezuela", "uruguay", "paraguay",
-                    "tabii", "eleven sports", "dazn", "bein sports", "superSport", "canale", "rai", "rtve"
-                ]
-                if any(f" {region}" in name_lower or f"({region})" in name_lower or name_lower.endswith(region) or name_lower.startswith(region) for region in global_exclusions):
-                    continue
-            
-            if "live event:" in name_lower or "vs" in name_lower:
-                group = "DLHD Live Sports"
-            else:
-                group = "DLHD United States & General"
-                
-            f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}" http-referrer="https://dlhd.pk/",{clean_name}\n')
-            f.write(f'#EXTVLCOPT:http-referrer=https://dlhd.pk/\n')
-            f.write(f'{url}\n\n')
-            valid_idx += 1
-    print(f"All done! Processed {valid_idx - 1} entries using the dedicated 24/7 path.")
-
-if __name__ == "__main__":
-    main()
+            if 'adult swim' in name_lower: pass
+            elif any(w in name_lower for w in ['xxx','porn','adult','18+','playboy','hustler','pink','brazzers']): continue
+            if any(w in name_lower for w in ['news','msnbc','cnn','cbsn']) and not any(w in name_lower for w in ['fox','israel','i24']): continue
+            if not any(w in name_lower for w in ['israel','i24','ch 12 il','ch 13 il','ch 11 il']) and 'sky sports' not in name_lower:
+                if any(' ' + r in name_lower or '(' + r in name_lower or name_lower.endswith(r) or name_lower.startswith(r) for r in ['uk','united kingdom','itv','bbc','bt sport','premier sports','tnt sports','italy','italia','spain','espana','germany','deutschland',' de','(de)','france','fr ','portugal','arabic','netherlands','greece','cyprus','albania','romania','poland','polska','turkey','turkiye','indonesia','indosiar','india','pakistan','latino','mexico','argentina','austria','slovakia','slovenia','sweden','chile','colombia','peru','ecuador','venezuela','uruguay','paraguay','tabii','eleven sports','dazn','bein sports','supersport','canale','rai','rtve']): continue
+            for p in range(1, 7):
+                stream_url = f'/dlhd/stream-{ch_id}.php?p={p}'
+                final_channels.append((f'{clean_name} (P{p})', stream_url))
+        with open('dlhd.m3u', 'w', encoding='utf-8') as f:
+            f.write('#EXTM3U\n\n')
+            idx = 1
+            for name, url in final_channels:
+                group = 'DLHD Live Sports' if ('live event:' in name.lower() or 'vs' in name.lower()) else 'DLHD United States & General'
+                f.write(f'#EXTINF:-1 tvg-id="ch-{idx}" tvg-name="{name}" group-title="{group}" http-referrer="https://dlhd.pk/",{name}\n#EXTVLCOPT:http-referrer=https://dlhd.pk/\n{url}\n\n')
+                idx += 1
+        print(f'Build complete. Generated {idx - 1} channels.')
+except Exception as e: print(f'Error: {e}')
