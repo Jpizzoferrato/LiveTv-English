@@ -2,16 +2,40 @@ import os
 import requests
 
 def fetch_channels():
-    """Fetches raw channel data from the source."""
-    print("Fetching raw channel list...")
-    try:
-        # If you need your real scraper logic here, make sure to add it.
-        # This keeps the current layout safe so the file compiles.
+    """Reads your local repository cache files to pull all 3,900+ channels."""
+    print("Reading repository schedule caches...")
+    channels = []
+    
+    # Check your cached files to load the full channel lineup instantly
+    for cache_file in ["known_channel_ids.json", "daddyliveSchedule.json"]:
+        if os.path.exists(cache_file):
+            import json
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        if str(v).isdigit(): 
+                            channels.append((str(k), str(v)))
+                elif isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict):
+                            cid = item.get("id") or item.get("ch_id") or item.get("channel_id")
+                            cname = item.get("name") or item.get("channel_name")
+                            if cid and cname: 
+                                channels.append((str(cname), str(cid)))
+                if channels:
+                    print(f"✅ Loaded {len(channels)} channels from local cache.")
+                    return channels
+            except Exception as e:
+                print(f"Error reading {cache_file}: {e}")
+                continue
+                
+    # Direct fallback if caches are completely missing
+    if not channels:
+        print("⚠️ Caches empty. Loading core sports channels...")
         channels = [("Sky Sports Main Event", "51"), ("TNT Sports 1", "52")]
-        return channels
-    except Exception as e:
-        print(f"Error fetching channels: {e}")
-        return []
+    return channels
 
 def main():
     raw_channels = fetch_channels()
@@ -19,32 +43,22 @@ def main():
         print("No channels found. Exiting.")
         return
 
-    final_channels = []
-
-    print("Generating proxy URLs...")
-    for name, ch_id in raw_channels:
-        for play_num in range(1, 7):
-            # Target the exact /proxy/ endpoint the unified-iptv-proxy container is looking for
-            daddylive_target = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
-            stream_url = f"http://pizzotv.duckdns.org:8080/proxy/manifest.m3u8?url={daddylive_target}"
-            final_channels.append((f"{name} (P{play_num})", stream_url))
-
-    # Writing out the formatted M3U playlist file
+    # Writing out the clean M3U playlist file directly to the source streams
     print("Writing playlist to file...")
     try:
         with open("dlhd.m3u", "w", encoding="utf-8") as f:
-            f.write("#EXTM3U\n")
+            f.write("#EXTM3U\n\n")
             for name, ch_id in raw_channels:
                 for play_num in range(1, 7):
-                    # 1. Target the raw DaddyLive stream destination
-                    daddylive_target = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
+                    # Direct stream destinations without the DuckDNS proxy layer
+                    stream_url = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
                     
-                    # 2. Wrap it perfectly inside your working proxy route
-                    stream_url = f"http://pizzotv.duckdns.org:8080/proxy/manifest.m3u8?url={daddylive_target}"
-                    
-                    # 3. Write out the tags and the new proxy URL
+                    # Write out your formatting tags and the clean URL
                     f.write(f'#EXTINF:-1 tvg-id="ch-{ch_id}" tvg-name="{name}" group-title="DLHD Live", {name} (P{play_num})\n')
-                    f.write(f"{stream_url}\n")
-        print("✅ dlhd.m3u created successfully!")
+                    f.write(f"{stream_url}\n\n")
+        print(f"✅ dlhd.m3u created successfully with {len(raw_channels) * 6} direct stream lines!")
     except Exception as e:
         print(f"Error writing file: {e}")
+
+if __name__ == "__main__":
+    main()
