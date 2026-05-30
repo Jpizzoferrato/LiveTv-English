@@ -38,7 +38,7 @@ jobs:
                   "Referer": "https://daddylive.org/"
               }
               
-              print("Scanning deeper into Script Block 15 to find the loading URLs...")
+              print("Scanning script for data fetching functions...")
               res = requests.get("https://daddylive.org/channel", headers=headers, timeout=15, verify=False)
               
               if res.status_code == 200:
@@ -47,12 +47,13 @@ jobs:
                   
                   for script in scripts:
                       content = script.string if script.string else ''
-                      if "enabledLists" in content:
-                          print("\n--- REVEALING CORE AJAX / FETCH PATHS ---")
-                          # Jump 6,000 characters in to skip what we already read, and print the next 6,000
-                          idx = content.find("enabledLists")
-                          print(content[idx+5500:idx+11500])
-                          print("-----------------------------------------\n")
+                      # Scan directly for fetching logic keywords
+                      if "fetch(" in content or "$.ajax" in content or "$.getJSON" in content or "xmlhttp" in content:
+                          print("\n--- FOUND DATA FETCH COMMANDS ---")
+                          for line in content.split('\n'):
+                              if any(k in line for k in ["fetch", "ajax", "json", ".php", "get("]):
+                                  print(line.strip())
+                          print("---------------------------------\n")
               else:
                   print(f"Failed to connect. Status code: {res.status_code}")
 
