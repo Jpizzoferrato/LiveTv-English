@@ -1,8 +1,26 @@
 import requests
 import urllib3
 import json
+import re
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def slugify(name):
+    # Replicates DaddyLive's backend text-slug generation
+    char_map = {
+        'á':'a','à':'a','â':'a','ä':'a','ã':'a','å':'a','æ':'ae',
+        'é':'e','è':'e','ê':'e','ë':'e','í':'i','ì':'i','î':'i','ï':'i',
+        'ó':'o','ò':'o','ô':'o','ö':'o','õ':'o','ø':'o','œ':'oe',
+        'ú':'u','ù':'u','û':'u','ü':'u','ý':'y','ÿ':'y',
+        'ñ':'n','ç':'c','ß':'ss','ð':'d','þ':'th'
+    }
+    text = name.strip().lower()
+    for c, r in char_map.items():
+        text = text.replace(c, r)
+    text = re.sub(r'\s+', '-', text)
+    text = re.sub(r'[^a-z0-9\-]', '', text)
+    text = re.sub(r'-{2,}', '-', text)
+    return text.strip('-')
 
 def main():
     raw_channels = []
@@ -41,11 +59,16 @@ def main():
         print("⚠️ No channels parsed! Stopping run to protect your current dlhd.m3u file.")
         return
 
-    print(f"✅ Successfully loaded {len(raw_channels)} raw channels. Applying Master US/Israel/Sky filters...")
+    print(f"✅ Successfully loaded {len(raw_channels)} raw channels. Formatting direct DaddyLive streams...")
+    
     for name, ch_id in raw_channels:
-        for play_num in range(1, 7):
-            stream_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
-            final_channels.append((f"{name} (P{play_num})", stream_url))
+        # Completely stripped DuckDNS out. Using direct stream players now.
+        if ch_id.isdigit() and int(ch_id) < 500:
+            stream_url = f"https://daddylive.org/live/stream-{ch_id}.php"
+        else:
+            stream_url = f"https://daddylive.org/live/stream-{slugify(name)}.php"
+            
+        final_channels.append((name, stream_url))
 
     print("Writing processed IPTV playlist lines...")
     with open("dlhd.m3u", "w", encoding="utf-8") as f:
@@ -56,7 +79,7 @@ def main():
             clean_name = str(name).split('\n')[0].strip()
             name_lower = clean_name.lower()
             
-            # 1. Strict Porn / Adult Content Filter (Adult Swim Explicitly Whitelisted)
+            # 1. Strict Porn / Adult Content Filter (Adult Swim Override)
             if "adult swim" in name_lower:
                 pass 
             else:
@@ -95,10 +118,12 @@ def main():
             else:
                 group = "DLHD United States & General"
                 
-            f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}",{clean_name}\n')
+            # 6. Inject custom headers directly for Sparkle TV's engine using double-r spelling
+            f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}" http-referrer="https://daddylive.org/",{clean_name}\n')
+            f.write(f'#EXTVLCOPT:http-referrer=https://daddylive.org/\n')
             f.write(f'{url}\n\n')
             valid_idx += 1
-    print(f"All done! Processed {valid_idx - 1} high-purity entries into your playlist.")
+    print(f"All done! Processed {valid_idx - 1} direct serverless entries into your playlist.")
 
 if __name__ == "__main__":
     main()
