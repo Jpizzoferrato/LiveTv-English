@@ -27,7 +27,9 @@ jobs:
         run: |
           cat << 'EOF' > run_scraper.py
           import requests
+          import re
           import urllib3
+          from bs4 import BeautifulSoup
 
           urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -37,16 +39,27 @@ jobs:
                   "Referer": "https://daddylive.org/"
               }
               
-              print("Fetching raw page source for analysis...")
+              print("Fetching total page source to locate script endpoints...")
               res = requests.get("https://daddylive.org/channel", headers=headers, timeout=15, verify=False)
               
               if res.status_code == 200:
-                  print("--- RAW HTML START ---")
-                  # Output the first 8000 characters of the page structure to inspect the code elements
-                  print(res.text[:8000])
-                  print("--- RAW HTML END ---")
+                  print("Analyzing full scripts inside HTML...")
+                  soup = BeautifulSoup(res.text, 'html.parser')
+                  
+                  # Look for any internal or external javascript files
+                  scripts = soup.find_all('script')
+                  for idx, script in enumerate(scripts):
+                      src = script.get('src', '')
+                      content = script.string if script.string else ''
+                      
+                      if src:
+                          print(f"Found Script File [{idx}]: {src}")
+                      if "fetch" in content or "ajax" in content or "$.get" in content or "json" in content:
+                          print(f"\n--- Found Data Fetching Logic in Script Block [{idx}] ---")
+                          print(content.strip()[:2000])
+                          print("------------------------------------------------------\n")
               else:
-                  print(f"Failed to fetch. Status code: {res.status_code}")
+                  print(f"Failed to connect. Status code: {res.status_code}")
 
           if __name__ == "__main__":
               main()
