@@ -6,7 +6,6 @@ import re
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def slugify(name):
-    # Replicates DaddyLive's backend text-slug generation
     char_map = {
         'á':'a','à':'a','â':'a','ä':'a','ã':'a','å':'a','æ':'ae',
         'é':'e','è':'e','ê':'e','ë':'e','í':'i','ì':'i','î':'i','ï':'i',
@@ -59,16 +58,18 @@ def main():
         print("⚠️ No channels parsed! Stopping run to protect your current dlhd.m3u file.")
         return
 
-    print(f"✅ Successfully loaded {len(raw_channels)} raw channels. Formatting direct DaddyLive streams...")
+    print(f"✅ Successfully loaded {len(raw_channels)} raw channels. Formatting php proxy links without DNS...")
     
     for name, ch_id in raw_channels:
-        # Completely stripped DuckDNS out. Using direct stream players now.
         if ch_id.isdigit() and int(ch_id) < 500:
-            stream_url = f"https://daddylive.org/live/stream-{ch_id}.php"
+            stream_identifier = ch_id
         else:
-            stream_url = f"https://daddylive.org/live/stream-{slugify(name)}.php"
+            stream_identifier = slugify(name)
             
-        final_channels.append((name, stream_url))
+        for play_num in range(1, 7):
+            # DuckDNS stripped out completely, but the exact proxy stream php path and duplicates remain
+            stream_url = f"/dlhd/stream-{stream_identifier}.php?p={play_num}"
+            final_channels.append((f"{name} (P{play_num})", stream_url))
 
     print("Writing processed IPTV playlist lines...")
     with open("dlhd.m3u", "w", encoding="utf-8") as f:
@@ -79,7 +80,6 @@ def main():
             clean_name = str(name).split('\n')[0].strip()
             name_lower = clean_name.lower()
             
-            # 1. Strict Porn / Adult Content Filter (Adult Swim Override)
             if "adult swim" in name_lower:
                 pass 
             else:
@@ -87,43 +87,38 @@ def main():
                 if any(word in name_lower for word in adult_keywords):
                     continue
                 
-            # 2. News Filter: Block generic/unwanted news networks, keeping Fox and Israel
             if "news" in name_lower or "msnbc" in name_lower or "cnn" in name_lower or "cbsn" in name_lower:
                 if "fox" in name_lower or "israel" in name_lower or "i24" in name_lower:
                     pass
                 else:
                     continue
                     
-            # 3. Whitelist Exceptions: Check if this is an allowed Israel or Sky Sports feed
             is_israel_feed = any(word in name_lower for word in ["israel", "i24", "ch 12 il", "ch 13 il", "ch 11 il"])
             is_sky_sports = "sky sports" in name_lower
             
-            # 4. Master Global Exclusion Filter (Only bypasses for whitelisted exceptions)
             if not is_israel_feed and not is_sky_sports:
                 global_exclusions = [
                     "uk", "united kingdom", "itv", "bbc", "bt sport", "premier sports", "tnt sports",
                     "italy", "italia", "spain", "espana", "germany", "deutschland", " de", "(de)",
                     "france", "fr ", "portugal", "arabic", "netherlands", "greece", "cyprus", 
                     "albania", "romania", "poland", "polska", "turkey", "turkiye", "indonesia", "indosiar",
-                    "india", "pakistan", "latino", "mexico", "argentina", "austria", "slovakia", "slovenia",
+                    "india", "pak Pakistan", "latino", "mexico", "argentina", "austria", "slovakia", "slovenia",
                     "sweden", "chile", "colombia", "peru", "ecuador", "venezuela", "uruguay", "paraguay",
                     "tabii", "eleven sports", "dazn", "bein sports", "superSport", "canale", "rai", "rtve"
                 ]
                 if any(f" {region}" in name_lower or f"({region})" in name_lower or name_lower.endswith(region) or name_lower.startswith(region) for region in global_exclusions):
                     continue
             
-            # 5. Clean US-Centric Group Assignment
             if "live event:" in name_lower or "vs" in name_lower:
                 group = "DLHD Live Sports"
             else:
                 group = "DLHD United States & General"
                 
-            # 6. Inject custom headers directly for Sparkle TV's engine using double-r spelling
             f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}" http-referrer="https://daddylive.org/",{clean_name}\n')
             f.write(f'#EXTVLCOPT:http-referrer=https://daddylive.org/\n')
             f.write(f'{url}\n\n')
             valid_idx += 1
-    print(f"All done! Processed {valid_idx - 1} direct serverless entries into your playlist.")
+    print(f"All done! Processed {valid_idx - 1} entries into your playlist.")
 
 if __name__ == "__main__":
     main()
