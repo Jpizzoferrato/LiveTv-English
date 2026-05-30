@@ -45,7 +45,8 @@ def main():
             if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
             if ch_id == "853": name = "Canale 5 Italy"
             
-            stream_url = f"https://daddylive.org/watch.php?id={ch_id}"
+            # Pure, clean source link for the local proxy builder
+            stream_url = f"https://dlhd.sx/stream/stream-{ch_id}.php"
             channels.append((name, stream_url))
 
     # ==========================================
@@ -56,7 +57,6 @@ def main():
     
     if html_schedule:
         soup = BeautifulSoup(html_schedule, 'html.parser')
-        # Find event links inside the schedule grid
         event_links = soup.find_all('a', href=re.compile(r'stream-\d+\.php'))
         print(f"Found {len(event_links)} scheduled event links.")
         
@@ -65,12 +65,15 @@ def main():
             href = link.get('href', '')
             if not name or not href: continue
             
-            # Clean up event link names so they match your clean format
             if "Stream" in name:
                 name = f"Live Event: {name}"
                 
-            stream_url = f"https://daddylive.org/{href}"
-            channels.append((name, stream_url))
+            # Extracts the clean stream identifier out of the href link
+            match = re.search(r'stream-(\d+)\.php', href)
+            if match:
+                ch_id = match.group(1)
+                stream_url = f"https://dlhd.sx/stream/stream-{ch_id}.php"
+                channels.append((name, stream_url))
 
     # ==========================================
     # 3. DUPLICATE ENGINE (PREVENTS REMOVAL)
@@ -96,12 +99,20 @@ def main():
     # 4. GENERATE THE COMBINED M3U FILE
     # ==========================================
     output_file = "dlhd.m3u"
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write("#EXTM3U\n\n")
-        for name, url in final_channels:
-            f.write(f'#EXTINF:-1 group-title="DLHD Combined",{name}\n{url}\n\n')
-    
-    print(f"Successfully created {output_file} with {len(final_channels)} total combined channels!")
+    print(f"Writing clean playlist to {output_file}...")
+    try:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("#EXTM3U\n\n")
+            for name, url in final_channels:
+                # Add all 6 playlist numbers per stream so your proxy maps them safely
+                for play_num in range(1, 7):
+                    clean_url = f"{url}?p={play_num}"
+                    f.write(f'#EXTINF:-1 group-title="DLHD Live", {name} (P{play_num})\n')
+                    f.write(f"{clean_url}\n\n")
+        print("✅ Clean dlhd.m3u generated successfully with your duplicate engine intact!")
+    except Exception as e:
+        print(f"Error writing file: {e}")
 
 if __name__ == "__main__":
     main()
+
