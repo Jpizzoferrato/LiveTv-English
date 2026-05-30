@@ -19,32 +19,22 @@ def main():
         print("No channels found. Exiting.")
         return
 
-    final_channels = []
-
-    print("Generating proxy URLs...")
-    for name, ch_id in raw_channels:
-        for play_num in range(1, 7):
-            # Target the exact /proxy/ endpoint the unified-iptv-proxy container is looking for
-            daddylive_target = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
-            stream_url = f"http://pizzotv.duckdns.org:8080/proxy/manifest.m3u8?url={daddylive_target}"
-            final_channels.append((f"{name} (P{play_num})", stream_url))
-
-    # Writing out the formatted M3U playlist file
-    print("Writing playlist to file...")
+    # Writing out a completely clean M3U playlist file for the Proxy Builder
+    print("Writing clean playlist to file...")
     try:
         with open("dlhd.m3u", "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
             for name, ch_id in raw_channels:
                 for play_num in range(1, 7):
-                    # 1. Target the raw DaddyLive stream destination
-                    daddylive_target = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
+                    # Point strictly to the raw DaddyLive stream URL
+                    stream_url = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
                     
-                    # 2. Wrap it perfectly inside your working proxy route
-                    stream_url = f"http://pizzotv.duckdns.org:8080/proxy/manifest.m3u8?url={daddylive_target}"
-                    
-                    # 3. Write out the tags and the new proxy URL
+                    # Write out the clean tags and direct URL without any proxy wrapping
                     f.write(f'#EXTINF:-1 tvg-id="ch-{ch_id}" tvg-name="{name}" group-title="DLHD Live", {name} (P{play_num})\n')
                     f.write(f"{stream_url}\n")
-        print("✅ dlhd.m3u created successfully!")
+        print("✅ Clean dlhd.m3u created successfully!")
     except Exception as e:
         print(f"Error writing file: {e}")
+
+if __name__ == "__main__":
+    main()
