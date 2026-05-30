@@ -27,7 +27,6 @@ jobs:
         run: |
           cat << 'EOF' > run_scraper.py
           import requests
-          import re
           import urllib3
           from bs4 import BeautifulSoup
 
@@ -39,25 +38,21 @@ jobs:
                   "Referer": "https://daddylive.org/"
               }
               
-              print("Fetching total page source to locate script endpoints...")
+              print("Extracting the data loading pathways from Script Block 15...")
               res = requests.get("https://daddylive.org/channel", headers=headers, timeout=15, verify=False)
               
               if res.status_code == 200:
-                  print("Analyzing full scripts inside HTML...")
                   soup = BeautifulSoup(res.text, 'html.parser')
-                  
-                  # Look for any internal or external javascript files
                   scripts = soup.find_all('script')
-                  for idx, script in enumerate(scripts):
-                      src = script.get('src', '')
+                  
+                  for script in scripts:
                       content = script.string if script.string else ''
-                      
-                      if src:
-                          print(f"Found Script File [{idx}]: {src}")
-                      if "fetch" in content or "ajax" in content or "$.get" in content or "json" in content:
-                          print(f"\n--- Found Data Fetching Logic in Script Block [{idx}] ---")
-                          print(content.strip()[:2000])
-                          print("------------------------------------------------------\n")
+                      if "enabledLists" in content:
+                          print("\n--- REVEALING BACKEND DATA SOURCE PATHS ---")
+                          # Grab the next 6000 characters of the script to catch the data fetch URLs
+                          idx = content.find("enabledLists")
+                          print(content[idx:idx+6000])
+                          print("-------------------------------------------\n")
               else:
                   print(f"Failed to connect. Status code: {res.status_code}")
 
