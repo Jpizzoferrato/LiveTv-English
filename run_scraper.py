@@ -8,7 +8,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def get_html(url):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-        "Referer": "https://daddylive.sx/"
+        "Referer": "https://daddylive.pk/"
     }
     try:
         res = requests.get(url, headers=headers, timeout=10, verify=False)
@@ -23,7 +23,7 @@ def main():
     final_channels = []
     
     print("Scraping 24/7 channels...")
-    html_247 = get_html("https://daddylive.sx/24-7-channels.php")
+    html_247 = get_html("https://daddylive.pk/24-7-channels.php")
     if html_247:
         soup = BeautifulSoup(html_247, 'html.parser')
         links = soup.find_all('a', href=re.compile(r'id='))
@@ -39,7 +39,6 @@ def main():
             
             raw_channels.append((name, ch_id))
 
-    # FIXED INDENTATION: Safely inside main() now
     print("Generating proxy URLs...")
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
