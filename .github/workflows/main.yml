@@ -21,41 +21,38 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml python-dateutil python-dotenv
+          pip install requests
 
       - name: Gather m3u
         run: |
           cat << 'EOF' > run_scraper.py
           import requests
           import urllib3
-          from bs4 import BeautifulSoup
+          import json
 
           urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
           def main():
               headers = {
                   "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-                  "Referer": "https://daddylive.org/"
+                  "Referer": "https://daddylive.org/channel"
               }
               
-              print("Scanning script for data fetching functions...")
-              res = requests.get("https://daddylive.org/channel", headers=headers, timeout=15, verify=False)
+              url = "https://daddylive.org/cache/channels.json"
+              print(f"Testing connection directly to cache file: {url}")
+              
+              res = requests.get(url, headers=headers, timeout=15, verify=False)
               
               if res.status_code == 200:
-                  soup = BeautifulSoup(res.text, 'html.parser')
-                  scripts = soup.find_all('script')
-                  
-                  for script in scripts:
-                      content = script.string if script.string else ''
-                      # Scan directly for fetching logic keywords
-                      if "fetch(" in content or "$.ajax" in content or "$.getJSON" in content or "xmlhttp" in content:
-                          print("\n--- FOUND DATA FETCH COMMANDS ---")
-                          for line in content.split('\n'):
-                              if any(k in line for k in ["fetch", "ajax", "json", ".php", "get("]):
-                                  print(line.strip())
-                          print("---------------------------------\n")
+                  print("--- SUCCESS! RAW CACHE SAMPLE ---")
+                  try:
+                      # Print the first 1500 characters of the raw JSON layout to see the keys
+                      print(res.text[:1500])
+                  except Exception as e:
+                      print(f"Error printing data: {e}")
+                  print("---------------------------------")
               else:
-                  print(f"Failed to connect. Status code: {res.status_code}")
+                  print(f"Failed to fetch cache. Status code: {res.status_code}")
 
           if __name__ == "__main__":
               main()
