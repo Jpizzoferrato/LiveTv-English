@@ -20,19 +20,19 @@ def main():
         return
 
     # Writing out a completely clean M3U playlist file for the Proxy Builder
-    print("Writing clean playlist to file...")
+    print("Writing clean playlist to file targeting .pk domains...")
     try:
         with open("dlhd.m3u", "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
             for name, ch_id in raw_channels:
                 for play_num in range(1, 7):
-                    # Point strictly to the raw DaddyLive stream URL
-                    stream_url = f"https://dlhd.sx/stream/stream-{ch_id}.php?p={play_num}"
+                    # Point strictly to the brand new, live DaddyLive stream URL (.pk)
+                    stream_url = f"https://dlhd.pk/stream/stream-{ch_id}.php?p={play_num}"
                     
-                    # Write out the clean tags and direct URL without any proxy wrapping
+                    # Write out the clean tags and direct URL without any proxy wrapping or old strings
                     f.write(f'#EXTINF:-1 tvg-id="ch-{ch_id}" tvg-name="{name}" group-title="DLHD Live", {name} (P{play_num})\n')
                     f.write(f"{stream_url}\n")
-        print("✅ Clean dlhd.m3u created successfully!")
+        print("✅ Clean dlhd.m3u created successfully with .pk domains!")
     except Exception as e:
         print(f"Error writing file: {e}")
 
