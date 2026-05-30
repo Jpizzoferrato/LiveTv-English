@@ -1,80 +1,56 @@
 import requests
-import re
 import urllib3
-from bs4 import BeautifulSoup
+import json
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-def get_html(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://daddylive.org/",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
-    }
-    try:
-        session = requests.Session()
-        res = session.get(url, headers=headers, timeout=15, verify=False)
-        if res.status_code == 200:
-            return res.text
-        else:
-            print(f"Tried {url} - Server responded with status code: {res.status_code}")
-    except Exception as e:
-        print(f"Connection error occurred: {e}")
-    return None
 
 def main():
     raw_channels = []
     final_channels = []
     
-    print("Scraping channels from the .org channel index...")
-    html_data = get_html("https://daddylive.org/channel")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+        "Referer": "https://daddylive.org/channel"
+    }
     
-    if not html_data:
-        print("Retrying with .php extension backup...")
-        html_data = get_html("https://daddylive.org/channel.php")
-
-    if html_data:
-        soup = BeautifulSoup(html_data, 'html.parser')
-        # Look for the channel link elements
-        links = soup.find_all('a', href=re.compile(r'id='))
-        
-        # If the site layout uses the new folder pattern, try a fallback search
-        if not links:
-            links = soup.find_all('a', href=re.compile(r'/live/stream='))
-        
-        for link in links:
-            name = link.text.strip()
-            href = link.get('href', '')
-            if not name: continue
+    url = "https://daddylive.org/cache/channels.json"
+    print(f"Fetching channels directly from database endpoint: {url}")
+    
+    try:
+        res = requests.get(url, headers=headers, timeout=15, verify=False)
+        if res.status_code == 200:
+            channels_data = res.json()
             
-            ch_id = None
-            if 'id=' in href:
-                ch_id = href.split('id=')[1].split('&')[0]
-            elif '/live/stream=' in href:
-                ch_id = href.split('stream=')[1]
+            for ch in channels_data:
+                ch_id = str(ch.get('id', '')).strip()
+                name = str(ch.get('title', '')).strip()
                 
-            if not ch_id: continue
-            
-            if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
-            if ch_id == "853": name = "Canale 5 Italy"
-            
-            raw_channels.append((name, ch_id))
+                # Skip placeholders or empty items
+                if not ch_id or not name or ch_id == "00":
+                    continue
+                
+                # Preserve your custom replacements
+                if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
+                if ch_id == "853": name = "Canale 5 Italy"
+                
+                raw_channels.append((name, ch_id))
+        else:
+            print(f"Server returned non-200 status code: {res.status_code}")
+    except Exception as e:
+        print(f"Network processing error occurred: {e}")
 
-    # SAFETY BRAKE: Protects your file if the page structure blocks us
+    # SAFETY BRAKE: Protects your file if the database read drops or fails
     if not raw_channels:
-        print("⚠️ No channels found! Stopping run to protect your current dlhd.m3u file.")
+        print("⚠️ No channels parsed! Stopping run to protect your current dlhd.m3u file.")
         return
 
-    print(f"✅ Successfully found {len(raw_channels)} channels! Generating proxy URLs...")
+    print(f"✅ Successfully loaded {len(raw_channels)} channels! Formatting proxy paths...")
     for name, ch_id in raw_channels:
         for play_num in range(1, 7):
             stream_url = f"http://pizzotv.duckdns.org:8080/dlhd/stream-{ch_id}.php?p={play_num}"
             final_channels.append((f"{name} (P{play_num})", stream_url))
 
-    print("Writing formatted IPTV lines...")
+    print("Writing processed IPTV playlist lines...")
     with open("dlhd.m3u", "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n\n")
         
@@ -109,6 +85,7 @@ def main():
             f.write(f'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}",{clean_name}\n')
             f.write(f'{url}\n\n')
             valid_idx += 1
+    print(f"All done! Processed {valid_idx - 1} entries into your playlist.")
 
 if __name__ == "__main__":
     main()
