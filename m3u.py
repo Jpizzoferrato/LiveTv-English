@@ -8,11 +8,16 @@ from bs4 import BeautifulSoup
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_html(url):
+    # Fixed and hardened browser spoofing headers to bypass data-center blocks
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Referer": "https://daddylive.org/",
+        "Connection": "keep-alive"
     }
     try:
-        res = requests.get(url, headers=headers, timeout=15, verify=False)
+        res = requests.get(url, headers=headers, timeout=20, verify=False)
         res.raise_for_status()
         return res.text
     except Exception as e:
@@ -57,7 +62,6 @@ def main():
     
     if html_schedule:
         soup = BeautifulSoup(html_schedule, 'html.parser')
-        # Find event links inside the schedule grid
         event_links = soup.find_all('a', href=re.compile(r'stream-\d+\.php'))
         print(f"Found {len(event_links)} scheduled event links.")
         
