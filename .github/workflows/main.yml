@@ -23,16 +23,71 @@ jobs:
 
       - name: Gather m3u
         run: |
-          cat << 'EOF' > run_scraper.py
-          import requests
-          import urllib3
-          import re
-
+          python -c '
+          import requests, urllib3, re
           urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-          def main():
-              url = "https://dlhd.pk/24-7-channels.php"
+          
+          url = "https://dlhd.pk/24-7-channels.php"
+          headers = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.9",
+              "Referer": "https://dlhd.pk/",
+              "Connection": "keep-alive"
+          }
+          
+          final_channels = []
+          try:
+              print(f"Requesting target: {url}")
+              res = requests.get(url, headers=headers, timeout=20, verify=False)
+              if res.status_code != 200:
+                  print(f"❌ Connection failed: {res.status_code}")
+                  exit()
               
-              # Emulating a standard desktop browser profile to breeze past the Adscore check
-              headers = {
-                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.
+              matches = re.findall(r"href=[\"\'][^\"\']*?watch\.php\?id=(\d+)[^\"\']*?[\"\']\s+data-title=[\"\']([^\"\']+)[\"\']", res.text)
+              if not matches:
+                  matches = re.findall(r"data-title=[\"\']([^\"\']+)[\"\']\s+href=[\"\'][^\"\']*?watch\.php\?id=(\d+)", res.text)
+                  if matches: matches = [(item[1], item[0]) for item in matches]
+          
+              if not matches:
+                  print("⚠️ Failed to parse elements.")
+                  exit()
+                  
+              print(f"✅ Extracted {len(matches)} active channels.")
+              for ch_id, name in matches:
+                  ch_id, clean_name = str(ch_id).strip(), str(name).strip().upper()
+                  if not ch_id or not clean_name or ch_id == "00": continue
+                  for play_num in range(1, 7):
+                      stream_url = f"/dlhd/stream-{ch_id}.php?p={play_num}"
+                      final_channels.append((f"{clean_name} (P{play_num})", stream_url))
+                      
+              with open("dlhd.m3u", "w", encoding="utf-8") as f:
+                  f.write("#EXTM3U\n\n")
+                  valid_idx = 1
+                  for clean_name, url in final_channels:
+                      name_lower = clean_name.lower()
+                      if "adult swim" in name_lower: pass
+                      else:
+                          if any(word in name_lower for word in ["xxx", "porn", "adult", "18+", "playboy", "hustler", "penthouse", "pink", "brazzers"]): continue
+                      if "news" in name_lower or "msnbc" in name_lower or "cnn" in name_lower or "cbsn" in name_lower:
+                          if "fox" in name_lower or "israel" in name_lower or "i24" in name_lower: pass
+                          else: continue
+                      if not any(w in name_lower for w in ["israel", "i24", "ch 12 il", "ch 13 il", "ch 11 il"]) and "sky sports" not in name_lower:
+                          if any(f" {r}" in name_lower or f"({r})" in name_lower or name_lower.endswith(r) or name_lower.startswith(r) for r in ["uk", "united kingdom", "itv", "bbc", "bt sport", "premier sports", "tnt sports", "italy", "italia", "spain", "espana", "germany", "deutschland", " de", "(de)", "france", "fr ", "portugal", "arabic", "netherlands", "greece", "cyprus", "albania", "romania", "poland", "polska", "turkey", "turkiye", "indonesia", "indosiar", "india", "pakistan", "latino", "mexico", "argentina", "austria", "slovakia", "slovenia", "sweden", "chile", "colombia", "peru", "ecuador", "venezuela", "uruguay", "paraguay", "tabii", "eleven sports", "dazn", "bein sports", "supersport", "canale", "rai", "rtve"]): continue
+                      group = "DLHD Live Sports" if ("live event:" in name_lower or "vs" in name_lower) else "DLHD United States & General"
+                      f.write(f\'#EXTINF:-1 tvg-id="ch-{valid_idx}" tvg-name="{clean_name}" group-title="{group}" http-referrer="https://dlhd.pk/",{clean_name}\n#EXTVLCOPT:http-referrer=https://dlhd.pk/\n{url}\n\n\')
+                      valid_idx += 1
+              print(f"Playlist build complete. Total items: {valid_idx - 1}")
+          except Exception as e:
+              print(f"Error: {e}")
+          '
+
+      - name: Commit and Push Playlist Updates
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41851482+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff-index --quiet HEAD || git commit -m "Deploy inline target scraper for mobile patch layout"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
