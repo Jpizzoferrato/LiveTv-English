@@ -10,18 +10,18 @@ def main():
     
     headers = {
         "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-        "Referer": "https://dlhd.pk/"
+        "Referer": "https://dlhd.pk/24-7-channels.php"
     }
     
-    # Pulling directly from the open public web directory to bypass the protected API key wall
-    url = "https://dlhd.pk/index.php"
-    print(f"Scraping public directory endpoint: {url}")
+    # Targeted directly at the sub-page from your screenshot
+    url = "https://dlhd.pk/24-7-channels.php"
+    print(f"Scraping active 24/7 directory endpoint: {url}")
     
     try:
         res = requests.get(url, headers=headers, timeout=15, verify=False)
         if res.status_code == 200:
-            # Matches the standard numeric web paths used across the public site layout
-            matches = re.findall(r'href=["\'](?:https://dlhd\.pk)?/stream/stream-(\d+)\.php["\'][^>]*>(.*?)</a>', res.text)
+            # Flexible regex to catch full URLs or relative paths like /stream/stream-123.php or stream-123.php
+            matches = re.findall(r'href=["\'](?:https://dlhd\.pk)?/?(?:stream/)?stream-(\d+)\.php["\'][^>]*>(.*?)</a>', res.text)
             
             for ch_id, name in matches:
                 ch_id = str(ch_id).strip()
@@ -30,7 +30,7 @@ def main():
                 if not ch_id or not name or ch_id == "00":
                     continue
                     
-                # Cleaning potential leftover HTML tags from web extraction
+                # Strip out any remaining image tags or HTML style elements inside the link text
                 name = re.sub(r'<[^>]+>', '', name).strip()
                 
                 if name == "Sky Calcio 7 (257) Italy": name = "DAZN"
@@ -43,13 +43,16 @@ def main():
         print(f"Network processing error occurred: {e}")
 
     if not raw_channels:
-        print("⚠️ No channels parsed from the public layout! Stopping run to protect your playlist.")
+        print("⚠️ Still no channels parsed! Let's widen the search net...")
+        # Backup looser check in case links don't say stream-X.php directly in the href tag
+        if 'res' in locals() and res.status_code == 200:
+            backup_matches = re.findall(r'stream-(\d+)\.php', res.text)
+            print(f"Found {len(backup_matches)} raw stream instances in source text via backup scanner.")
         return
 
-    print(f"✅ Successfully extracted {len(raw_channels)} clean public channels. Mapping proxy endpoints...")
+    print(f"✅ Successfully extracted {len(raw_channels)} channels from the 24/7 page. Mapping proxy loops...")
     
     for name, ch_id in raw_channels:
-        # Generates the exact 1-6 player loops matching your proxy server config
         for play_num in range(1, 7):
             stream_url = f"/dlhd/stream-{ch_id}.php?p={play_num}"
             final_channels.append((f"{name} (P{play_num})", stream_url))
@@ -101,7 +104,7 @@ def main():
             f.write(f'#EXTVLCOPT:http-referrer=https://dlhd.pk/\n')
             f.write(f'{url}\n\n')
             valid_idx += 1
-    print(f"All done! Processed {valid_idx - 1} entries using the dlhd.pk directory framework.")
+    print(f"All done! Processed {valid_idx - 1} entries using the dedicated 24/7 path.")
 
 if __name__ == "__main__":
     main()
